@@ -15,24 +15,162 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
+            padding: 0;
         }
 
-        .container {
-            background: rgba(255, 255, 255, 0.95);
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Header 样式 */
+        .header {
+            padding: 15px 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            font-size: 1.8em;
+            font-weight: 600;
+            color: #333;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-menu {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .menu-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 8px 16px;
             border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            padding: 40px;
-            max-width: 800px;
-            width: 100%;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 100px;
+        }
+
+        .menu-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .menu-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .menu-btn-recording {
+            background: linear-gradient(45deg, #dc3545, #c82333);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* 消息列表样式 */
+        .message-container {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.9);
+            margin: 0;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 15px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+
+        .message-user {
+            background: #007bff;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .message-ai {
+            background: #e9ecef;
+            color: #333;
+        }
+
+        .message-system {
+            background: #fff3cd;
+            color: #856404;
+            text-align: center;
+            max-width: 100%;
+            margin: 10px auto;
+        }
+
+        .status-indicator {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            z-index: 1000;
+        }
+
+        .status-connected {
+            background: rgba(40, 167, 69, 0.9);
+        }
+
+        .status-disconnected {
+            background: rgba(220, 53, 69, 0.9);
+        }
+
+        .status-recording {
+            background: rgba(255, 193, 7, 0.9);
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 10px 15px;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .header-title {
+                font-size: 1.5em;
+            }
+
+            .menu-btn {
+                min-width: 80px;
+                font-size: 0.8em;
+                padding: 6px 12px;
+            }
+
+            .message {
+                max-width: 90%;
+            }
         }
 
         .header {
             text-align: center;
-            margin-bottom: 30px;
         }
 
         .header h1 {
@@ -42,11 +180,6 @@
             background: linear-gradient(45deg, #667eea, #764ba2);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-        }
-
-        .header p {
-            color: #666;
-            font-size: 1.1em;
         }
 
         .status-panel {
@@ -242,56 +375,26 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="app-container">
+        <!-- Header部分 -->
         <div class="header">
-            <h1>🤖 AI Chat ASR</h1>
-            <p>基于WebSocket的实时语音对话系统</p>
-        </div>
-
-        <div class="status-panel">
-            <div class="status-item">
-                <span class="status-label">连接状态:</span>
-                <span id="connectionStatus" class="status-value status-disconnected">未连接</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">录音状态:</span>
-                <span id="recordingStatus" class="status-value status-waiting">等待开始</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">唤醒状态:</span>
-                <span id="wakeWordStatus" class="status-value status-waiting">等待唤醒</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">对话状态:</span>
-                <span id="chatStatus" class="status-value status-waiting">准备就绪</span>
+            <div class="header-title">🤖 AI Chat ASR</div>
+            <div class="header-menu">
+                <button id="languageBtn" class="menu-btn" onclick="toggleLanguage()">English</button>
+                <button id="conversationBtn" class="menu-btn" onclick="toggleConversation()" disabled>开始对话</button>
             </div>
         </div>
 
-        <div class="audio-visualizer" id="audioVisualizer">
-            <!-- 音频可视化将在这里动态生成 -->
+        <!-- 状态指示器 -->
+        <div id="statusIndicator" class="status-indicator status-disconnected">
+            连接状态: 未连接
         </div>
 
-        <div class="control-panel">
-            <button id="connectBtn" class="btn" onclick="connectWebSocket()">连接服务器</button>
-            <button id="recordBtn" class="btn" onclick="toggleRecording()" disabled>开始录音</button>
-            <button id="resetBtn" class="btn" onclick="resetConversation()" disabled>重置对话</button>
-        </div>
-
-        <div class="chat-area" id="chatArea">
+        <!-- 消息列表 -->
+        <div class="message-container" id="messageContainer">
             <div class="message message-system">
-                欢迎使用AI语音对话系统！请先连接服务器，然后开始录音。
+                正在连接服务器并启动录音...
             </div>
-        </div>
-
-        <div class="instructions">
-            <h3>使用说明</h3>
-            <ul>
-                <li>点击"连接服务器"建立WebSocket连接</li>
-                <li>连接成功后，点击"开始录音"进行语音对话</li>
-                <li>说出关键词唤醒系统（如"小助手"）</li>
-                <li>系统会自动识别语音并生成智能回复</li>
-                <li>点击"重置对话"可以重新开始对话</li>
-            </ul>
         </div>
     </div>
 
@@ -306,6 +409,20 @@
                 this.analyser = null;
                 this.audioStream = null;
                 this.wakeWordDetected = false;
+                this.isConversationActive = false;
+                this.currentLanguage = 'zh-CN'; // 默认中文
+            }
+
+            // 页面加载时自动连接和录音
+            async initialize() {
+                this.addMessage('系统', '正在连接服务器...', 'system');
+                await this.connect();
+                
+                if (this.isConnected) {
+                    this.addMessage('系统', '正在启动录音...', 'system');
+                    await this.startRecording();
+                    this.addMessage('系统', '系统已就绪，请说出唤醒词开始对话', 'system');
+                }
             }
 
             async connect() {
@@ -317,8 +434,8 @@
                     
                     this.ws.onopen = () => {
                         this.isConnected = true;
-                        this.updateStatus('connectionStatus', '已连接', 'status-connected');
-                        document.getElementById('recordBtn').disabled = false;
+                        this.updateStatusIndicator('已连接', 'status-connected');
+                        document.getElementById('conversationBtn').disabled = false;
                         this.addMessage('系统', '服务器连接成功！', 'system');
                     };
                     
@@ -328,8 +445,8 @@
                     
                     this.ws.onclose = () => {
                         this.isConnected = false;
-                        this.updateStatus('connectionStatus', '未连接', 'status-disconnected');
-                        document.getElementById('recordBtn').disabled = true;
+                        this.updateStatusIndicator('未连接', 'status-disconnected');
+                        document.getElementById('conversationBtn').disabled = true;
                         this.addMessage('系统', '服务器连接已断开', 'system');
                     };
                     
@@ -355,15 +472,6 @@
                             noiseSuppression: true
                         } 
                     });
-
-                    // 设置音频上下文和分析器
-                    this.audioContext = new AudioContext();
-                    const source = this.audioContext.createMediaStreamSource(this.audioStream);
-                    this.analyser = this.audioContext.createAnalyser();
-                    source.connect(this.analyser);
-                    
-                    // 设置音频可视化
-                    this.setupVisualizer();
 
                     // 创建MediaRecorder
                     this.mediaRecorder = new MediaRecorder(this.audioStream, {
@@ -393,11 +501,8 @@
                     this.mediaRecorder.start(2000);
                     this.isRecording = true;
                     
-                    this.updateStatus('recordingStatus', '录音中', 'status-connected');
-                    document.getElementById('recordBtn').classList.add('btn-recording');
-                    document.getElementById('recordBtn').textContent = '停止录音';
-                    
-                    this.addMessage('系统', '开始录音，请说出唤醒词开始对话', 'system');
+                    this.updateStatusIndicator('录音中', 'status-recording');
+                    this.addMessage('系统', '录音已启动，请说出唤醒词开始对话', 'system');
                     
                 } catch (error) {
                     console.error('录音启动失败:', error);
@@ -415,11 +520,44 @@
                         this.audioStream.getTracks().forEach(track => track.stop());
                     }
                     
-                    this.updateStatus('recordingStatus', '已停止', 'status-waiting');
-                    document.getElementById('recordBtn').classList.remove('btn-recording');
-                    document.getElementById('recordBtn').textContent = '开始录音';
-                    
+                    this.updateStatusIndicator('已连接', 'status-connected');
                     this.addMessage('系统', '录音已停止', 'system');
+                }
+            }
+
+            // 切换对话状态
+            toggleConversation() {
+                if (this.isConversationActive) {
+                    this.stopConversation();
+                } else {
+                    this.startConversation();
+                }
+            }
+
+            startConversation() {
+                this.isConversationActive = true;
+                document.getElementById('conversationBtn').textContent = '结束对话';
+                document.getElementById('conversationBtn').classList.add('menu-btn-recording');
+                this.addMessage('系统', '对话已开始，请说话', 'system');
+            }
+
+            stopConversation() {
+                this.isConversationActive = false;
+                document.getElementById('conversationBtn').textContent = '开始对话';
+                document.getElementById('conversationBtn').classList.remove('menu-btn-recording');
+                this.addMessage('系统', '对话已结束', 'system');
+            }
+
+            // 切换语言
+            toggleLanguage() {
+                if (this.currentLanguage === 'zh-CN') {
+                    this.currentLanguage = 'en-US';
+                    document.getElementById('languageBtn').textContent = '中文';
+                    this.addMessage('系统', '已切换到英文模式', 'system');
+                } else {
+                    this.currentLanguage = 'zh-CN';
+                    document.getElementById('languageBtn').textContent = 'English';
+                    this.addMessage('系统', '已切换到中文模式', 'system');
                 }
             }
 
@@ -440,9 +578,8 @@
                         
                     case 'wake_word':
                         this.wakeWordDetected = true;
-                        this.updateStatus('wakeWordStatus', '已唤醒', 'status-connected');
-                        this.addMessage('系统', `唤醒词"${message.word}"检测成功！`, 'system');
-                        this.updateStatus('chatStatus', '对话中', 'status-connected');
+                        this.addMessage('系统', `唤醒词"${message.word}"检测成功！对话开始`, 'system');
+                        this.startConversation();
                         break;
                         
                     case 'asr_result':
@@ -480,68 +617,28 @@
                 }
             }
 
-            setupVisualizer() {
-                const visualizer = document.getElementById('audioVisualizer');
-                visualizer.innerHTML = '';
-                
-                const barCount = 64;
-                for (let i = 0; i < barCount; i++) {
-                    const bar = document.createElement('div');
-                    bar.className = 'visualizer-bar';
-                    bar.style.left = `${(i / barCount) * 100}%`;
-                    bar.style.height = '0px';
-                    visualizer.appendChild(bar);
-                }
-                
-                this.animateVisualizer();
-            }
-
-            animateVisualizer() {
-                if (!this.isRecording || !this.analyser) return;
-                
-                const bars = document.querySelectorAll('.visualizer-bar');
-                const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
-                
-                const animate = () => {
-                    if (!this.isRecording) return;
-                    
-                    this.analyser.getByteFrequencyData(dataArray);
-                    
-                    bars.forEach((bar, index) => {
-                        const value = dataArray[Math.floor(index * dataArray.length / bars.length)];
-                        const height = Math.max(1, value / 255 * 80);
-                        bar.style.height = `${height}px`;
-                    });
-                    
-                    requestAnimationFrame(animate);
-                };
-                
-                animate();
-            }
-
             addMessage(sender, text, type) {
-                const chatArea = document.getElementById('chatArea');
+                const messageContainer = document.getElementById('messageContainer');
                 const messageDiv = document.createElement('div');
                 messageDiv.className = `message message-${type}`;
                 messageDiv.innerHTML = `<strong>${sender}:</strong> ${text}`;
                 
-                chatArea.appendChild(messageDiv);
-                chatArea.scrollTop = chatArea.scrollHeight;
+                messageContainer.appendChild(messageDiv);
+                messageContainer.scrollTop = messageContainer.scrollHeight;
             }
 
-            updateStatus(elementId, text, className) {
-                const element = document.getElementById(elementId);
-                element.textContent = text;
-                element.className = `status-value ${className}`;
+            updateStatusIndicator(text, className) {
+                const indicator = document.getElementById('statusIndicator');
+                indicator.textContent = `连接状态: ${text}`;
+                indicator.className = `status-indicator ${className}`;
             }
 
-            reset() {
+            resetConversation() {
                 this.wakeWordDetected = false;
-                this.updateStatus('wakeWordStatus', '等待唤醒', 'status-waiting');
-                this.updateStatus('chatStatus', '准备就绪', 'status-waiting');
+                this.stopConversation();
                 
-                const chatArea = document.getElementById('chatArea');
-                chatArea.innerHTML = '<div class="message message-system">对话已重置</div>';
+                const messageContainer = document.getElementById('messageContainer');
+                messageContainer.innerHTML = '<div class="message message-system">对话已重置</div>';
                 
                 this.addMessage('系统', '对话已重置，请说出唤醒词开始新的对话', 'system');
             }
@@ -570,25 +667,19 @@
         const voiceChat = new VoiceChatClient();
 
         // 全局函数
-        function connectWebSocket() {
-            voiceChat.connect();
-            document.getElementById('connectBtn').disabled = true;
-            document.getElementById('resetBtn').disabled = false;
+        function toggleLanguage() {
+            voiceChat.toggleLanguage();
         }
 
-        function toggleRecording() {
-            if (voiceChat.isRecording) {
-                voiceChat.stopRecording();
-            } else {
-                voiceChat.startRecording();
-            }
+        function toggleConversation() {
+            voiceChat.toggleConversation();
         }
 
         function resetConversation() {
-            voiceChat.reset();
+            voiceChat.resetConversation();
         }
 
-        // 页面加载完成后的初始化
+        // 页面加载时自动初始化
         window.addEventListener('load', () => {
             // 检查浏览器是否支持Web Audio API
             if (!window.AudioContext && !window.webkitAudioContext) {
@@ -599,6 +690,8 @@
             if (!navigator.mediaDevices || !window.MediaRecorder) {
                 alert('您的浏览器不支持录音功能，请使用现代浏览器如Chrome、Firefox或Edge。');
             }
+            
+            voiceChat.initialize();
         });
     </script>
 </body>
