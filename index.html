@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat ASR - 实时语音对话系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .status-panel {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .status-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .status-value {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .status-connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-waiting {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .control-panel {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0 10px;
+            min-width: 150px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-recording {
+            background: linear-gradient(45deg, #dc3545, #c82333);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .chat-area {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 15px;
+            max-width: 80%;
+        }
+
+        .message-user {
+            background: #007bff;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .message-ai {
+            background: #e9ecef;
+            color: #333;
+        }
+
+        .message-system {
+            background: #fff3cd;
+            color: #856404;
+            text-align: center;
+            max-width: 100%;
+        }
+
+        .audio-visualizer {
+            width: 100%;
+            height: 80px;
+            background: #333;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .visualizer-bar {
+            position: absolute;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(to top, #667eea, #764ba2);
+            border-radius: 2px 2px 0 0;
+            transition: height 0.1s ease;
+        }
+
+        .instructions {
+            background: #e7f3ff;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            border-radius: 0 10px 10px 0;
+            margin-top: 20px;
+        }
+
+        .instructions h3 {
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+
+        .instructions ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        .instructions li {
+            padding: 5px 0;
+            color: #495057;
+        }
+
+        .instructions li:before {
+            content: "•";
+            color: #007bff;
+            font-weight: bold;
+            display: inline-block;
+            width: 1em;
+            margin-left: -1em;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .btn {
+                display: block;
+                width: 100%;
+                margin: 10px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI Chat ASR</h1>
+            <p>基于WebSocket的实时语音对话系统</p>
+        </div>
+
+        <div class="status-panel">
+            <div class="status-item">
+                <span class="status-label">连接状态:</span>
+                <span id="connectionStatus" class="status-value status-disconnected">未连接</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">录音状态:</span>
+                <span id="recordingStatus" class="status-value status-waiting">等待开始</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">唤醒状态:</span>
+                <span id="wakeWordStatus" class="status-value status-waiting">等待唤醒</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">对话状态:</span>
+                <span id="chatStatus" class="status-value status-waiting">准备就绪</span>
+            </div>
+        </div>
+
+        <div class="audio-visualizer" id="audioVisualizer">
+            <!-- 音频可视化将在这里动态生成 -->
+        </div>
+
+        <div class="control-panel">
+            <button id="connectBtn" class="btn" onclick="connectWebSocket()">连接服务器</button>
+            <button id="recordBtn" class="btn" onclick="toggleRecording()" disabled>开始录音</button>
+            <button id="resetBtn" class="btn" onclick="resetConversation()" disabled>重置对话</button>
+        </div>
+
+        <div class="chat-area" id="chatArea">
+            <div class="message message-system">
+                欢迎使用AI语音对话系统！请先连接服务器，然后开始录音。
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>使用说明</h3>
+            <ul>
+                <li>点击"连接服务器"建立WebSocket连接</li>
+                <li>连接成功后，点击"开始录音"进行语音对话</li>
+                <li>说出关键词唤醒系统（如"小助手"）</li>
+                <li>系统会自动识别语音并生成智能回复</li>
+                <li>点击"重置对话"可以重新开始对话</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        class VoiceChatClient {
+            constructor() {
+                this.ws = null;
+                this.isRecording = false;
+                this.isConnected = false;
+                this.mediaRecorder = null;
+                this.audioContext = null;
+                this.analyser = null;
+                this.audioStream = null;
+                this.wakeWordDetected = false;
+            }
+
+            async connect() {
+                try {
+                    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    const wsUrl = `${protocol}//${window.location.host}/ws`;
+                    
+                    this.ws = new WebSocket(wsUrl);
+                    
+                    this.ws.onopen = () => {
+                        this.isConnected = true;
+                        this.updateStatus('connectionStatus', '已连接', 'status-connected');
+                        document.getElementById('recordBtn').disabled = false;
+                        this.addMessage('系统', '服务器连接成功！', 'system');
+                    };
+                    
+                    this.ws.onmessage = (event) => {
+                        this.handleMessage(JSON.parse(event.data));
+                    };
+                    
+                    this.ws.onclose = () => {
+                        this.isConnected = false;
+                        this.updateStatus('connectionStatus', '未连接', 'status-disconnected');
+                        document.getElementById('recordBtn').disabled = true;
+                        this.addMessage('系统', '服务器连接已断开', 'system');
+                    };
+                    
+                    this.ws.onerror = (error) => {
+                        console.error('WebSocket错误:', error);
+                        this.addMessage('系统', '连接错误，请检查服务器状态', 'system');
+                    };
+                    
+                } catch (error) {
+                    console.error('连接失败:', error);
+                    this.addMessage('系统', '连接失败: ' + error.message, 'system');
+                }
+            }
+
+            async startRecording() {
+                try {
+                    // 请求麦克风权限
+                    this.audioStream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: {
+                            sampleRate: 16000,
+                            channelCount: 1,
+                            echoCancellation: true,
+                            noiseSuppression: true
+                        } 
+                    });
+
+                    // 设置音频上下文和分析器
+                    this.audioContext = new AudioContext();
+                    const source = this.audioContext.createMediaStreamSource(this.audioStream);
+                    this.analyser = this.audioContext.createAnalyser();
+                    source.connect(this.analyser);
+                    
+                    // 设置音频可视化
+                    this.setupVisualizer();
+
+                    // 创建MediaRecorder
+                    this.mediaRecorder = new MediaRecorder(this.audioStream, {
+                        mimeType: 'audio/webm;codecs=opus'
+                    });
+
+                    let audioChunks = [];
+                    
+                    this.mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            audioChunks.push(event.data);
+                        }
+                    };
+
+                    this.mediaRecorder.onstop = async () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        audioChunks = [];
+                        
+                        // 将音频转换为base64并发送
+                        const arrayBuffer = await audioBlob.arrayBuffer();
+                        const base64Audio = this.arrayBufferToBase64(arrayBuffer);
+                        
+                        this.sendAudioData(base64Audio);
+                    };
+
+                    // 开始录音（每2秒发送一次数据）
+                    this.mediaRecorder.start(2000);
+                    this.isRecording = true;
+                    
+                    this.updateStatus('recordingStatus', '录音中', 'status-connected');
+                    document.getElementById('recordBtn').classList.add('btn-recording');
+                    document.getElementById('recordBtn').textContent = '停止录音';
+                    
+                    this.addMessage('系统', '开始录音，请说出唤醒词开始对话', 'system');
+                    
+                } catch (error) {
+                    console.error('录音启动失败:', error);
+                    this.addMessage('系统', '录音启动失败: ' + error.message, 'system');
+                }
+            }
+
+            stopRecording() {
+                if (this.mediaRecorder && this.isRecording) {
+                    this.mediaRecorder.stop();
+                    this.isRecording = false;
+                    
+                    // 关闭音频流
+                    if (this.audioStream) {
+                        this.audioStream.getTracks().forEach(track => track.stop());
+                    }
+                    
+                    this.updateStatus('recordingStatus', '已停止', 'status-waiting');
+                    document.getElementById('recordBtn').classList.remove('btn-recording');
+                    document.getElementById('recordBtn').textContent = '开始录音';
+                    
+                    this.addMessage('系统', '录音已停止', 'system');
+                }
+            }
+
+            sendAudioData(base64Audio) {
+                if (this.ws && this.isConnected) {
+                    this.ws.send(JSON.stringify({
+                        type: 'audio',
+                        data: base64Audio
+                    }));
+                }
+            }
+
+            handleMessage(message) {
+                switch (message.type) {
+                    case 'connection':
+                        this.addMessage('系统', message.message, 'system');
+                        break;
+                        
+                    case 'wake_word':
+                        this.wakeWordDetected = true;
+                        this.updateStatus('wakeWordStatus', '已唤醒', 'status-connected');
+                        this.addMessage('系统', `唤醒词"${message.word}"检测成功！`, 'system');
+                        this.updateStatus('chatStatus', '对话中', 'status-connected');
+                        break;
+                        
+                    case 'asr_result':
+                        this.addMessage('用户', message.text, 'user');
+                        break;
+                        
+                    case 'tts_audio':
+                        this.addMessage('AI助手', message.text, 'ai');
+                        this.playAudio(message.audio);
+                        break;
+                        
+                    case 'control':
+                        this.addMessage('系统', message.message, 'system');
+                        break;
+                        
+                    case 'error':
+                        this.addMessage('系统', '错误: ' + message.message, 'system');
+                        break;
+                }
+            }
+
+            playAudio(base64Audio) {
+                try {
+                    const audioData = this.base64ToArrayBuffer(base64Audio);
+                    const audioContext = new AudioContext();
+                    
+                    audioContext.decodeAudioData(audioData, (buffer) => {
+                        const source = audioContext.createBufferSource();
+                        source.buffer = buffer;
+                        source.connect(audioContext.destination);
+                        source.start();
+                    });
+                } catch (error) {
+                    console.error('播放音频失败:', error);
+                }
+            }
+
+            setupVisualizer() {
+                const visualizer = document.getElementById('audioVisualizer');
+                visualizer.innerHTML = '';
+                
+                const barCount = 64;
+                for (let i = 0; i < barCount; i++) {
+                    const bar = document.createElement('div');
+                    bar.className = 'visualizer-bar';
+                    bar.style.left = `${(i / barCount) * 100}%`;
+                    bar.style.height = '0px';
+                    visualizer.appendChild(bar);
+                }
+                
+                this.animateVisualizer();
+            }
+
+            animateVisualizer() {
+                if (!this.isRecording || !this.analyser) return;
+                
+                const bars = document.querySelectorAll('.visualizer-bar');
+                const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+                
+                const animate = () => {
+                    if (!this.isRecording) return;
+                    
+                    this.analyser.getByteFrequencyData(dataArray);
+                    
+                    bars.forEach((bar, index) => {
+                        const value = dataArray[Math.floor(index * dataArray.length / bars.length)];
+                        const height = Math.max(1, value / 255 * 80);
+                        bar.style.height = `${height}px`;
+                    });
+                    
+                    requestAnimationFrame(animate);
+                };
+                
+                animate();
+            }
+
+            addMessage(sender, text, type) {
+                const chatArea = document.getElementById('chatArea');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message message-${type}`;
+                messageDiv.innerHTML = `<strong>${sender}:</strong> ${text}`;
+                
+                chatArea.appendChild(messageDiv);
+                chatArea.scrollTop = chatArea.scrollHeight;
+            }
+
+            updateStatus(elementId, text, className) {
+                const element = document.getElementById(elementId);
+                element.textContent = text;
+                element.className = `status-value ${className}`;
+            }
+
+            reset() {
+                this.wakeWordDetected = false;
+                this.updateStatus('wakeWordStatus', '等待唤醒', 'status-waiting');
+                this.updateStatus('chatStatus', '准备就绪', 'status-waiting');
+                
+                const chatArea = document.getElementById('chatArea');
+                chatArea.innerHTML = '<div class="message message-system">对话已重置</div>';
+                
+                this.addMessage('系统', '对话已重置，请说出唤醒词开始新的对话', 'system');
+            }
+
+            // 工具函数
+            arrayBufferToBase64(buffer) {
+                let binary = '';
+                const bytes = new Uint8Array(buffer);
+                for (let i = 0; i < bytes.byteLength; i++) {
+                    binary += String.fromCharCode(bytes[i]);
+                }
+                return btoa(binary);
+            }
+
+            base64ToArrayBuffer(base64) {
+                const binary = atob(base64);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) {
+                    bytes[i] = binary.charCodeAt(i);
+                }
+                return bytes.buffer;
+            }
+        }
+
+        // 创建客户端实例
+        const voiceChat = new VoiceChatClient();
+
+        // 全局函数
+        function connectWebSocket() {
+            voiceChat.connect();
+            document.getElementById('connectBtn').disabled = true;
+            document.getElementById('resetBtn').disabled = false;
+        }
+
+        function toggleRecording() {
+            if (voiceChat.isRecording) {
+                voiceChat.stopRecording();
+            } else {
+                voiceChat.startRecording();
+            }
+        }
+
+        function resetConversation() {
+            voiceChat.reset();
+        }
+
+        // 页面加载完成后的初始化
+        window.addEventListener('load', () => {
+            // 检查浏览器是否支持Web Audio API
+            if (!window.AudioContext && !window.webkitAudioContext) {
+                alert('您的浏览器不支持Web Audio API，请使用现代浏览器如Chrome、Firefox或Edge。');
+            }
+            
+            // 检查是否支持MediaRecorder
+            if (!navigator.mediaDevices || !window.MediaRecorder) {
+                alert('您的浏览器不支持录音功能，请使用现代浏览器如Chrome、Firefox或Edge。');
+            }
+        });
+    </script>
+</body>
+</html>
