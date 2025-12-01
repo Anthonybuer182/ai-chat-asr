@@ -1,697 +1,1256 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+    <!-- 页面元数据配置 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Chat ASR - 实时语音对话系统</title>
+    <meta name="theme-color" content="#667eea">
+    
+    <!-- 图标和样式表 -->
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- 页面标题 -->
+    <title>AI语音聊天系统</title>
+    
+    <!-- 内联CSS样式定义 -->
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-
+        
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
-
-        .app-container {
+        
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            height: 90vh;
+            max-height: 800px;
             display: flex;
             flex-direction: column;
-            height: 100vh;
         }
-
-        /* Header 样式 */
-        .header {
-            padding: 15px 30px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        
+        /* Header布局样式 */
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .header-content {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            padding: 15px 20px;
         }
-
-        .header-title {
-            font-size: 1.8em;
-            font-weight: 600;
-            color: #333;
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .header-menu {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-
-        .menu-btn {
-            background: linear-gradient(45deg, #667eea, #764ba2);
+        
+        .app-title {
+            font-size: 24px;
+            font-weight: 800;
             color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.9em;
+            margin: 0;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            letter-spacing: 0.5px;
+        }
+        
+        /* 右侧控制组件样式 */
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        /* 语言选择器样式 */        
+        .language-btn {
+            padding: 8px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 32px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 13px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
-            min-width: 100px;
-        }
-
-        .menu-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
-        }
-
-        .menu-btn:disabled {
-            background: #6c757d;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .menu-btn-recording {
-            background: linear-gradient(45deg, #dc3545, #c82333);
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-
-        /* 消息列表样式 */
-        .message-container {
-            flex: 1;
-            background: rgba(255, 255, 255, 0.9);
-            margin: 0;
-            padding: 20px;
-            overflow-y: auto;
+            backdrop-filter: blur(10px);
+            min-width: 60px;
+            height: 36px;
             display: flex;
-            flex-direction: column;
-        }
-
-        .message {
-            margin-bottom: 15px;
-            padding: 15px;
-            border-radius: 15px;
-            max-width: 80%;
-            word-wrap: break-word;
-        }
-
-        .message-user {
-            background: #007bff;
-            color: white;
-            margin-left: auto;
-            text-align: right;
-        }
-
-        .message-ai {
-            background: #e9ecef;
-            color: #333;
-        }
-
-        .message-system {
-            background: #fff3cd;
-            color: #856404;
-            text-align: center;
-            max-width: 100%;
-            margin: 10px auto;
-        }
-
-        .status-indicator {
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 0.8em;
-            z-index: 1000;
-        }
-
-        .status-connected {
-            background: rgba(40, 167, 69, 0.9);
-        }
-
-        .status-disconnected {
-            background: rgba(220, 53, 69, 0.9);
-        }
-
-        .status-recording {
-            background: rgba(255, 193, 7, 0.9);
-        }
-
-        @media (max-width: 768px) {
-            .header {
-                padding: 10px 15px;
-                flex-direction: column;
-                gap: 10px;
-            }
-
-            .header-title {
-                font-size: 1.5em;
-            }
-
-            .menu-btn {
-                min-width: 80px;
-                font-size: 0.8em;
-                padding: 6px 12px;
-            }
-
-            .message {
-                max-width: 90%;
-            }
-        }
-
-        .header {
-            text-align: center;
-        }
-
-        .header h1 {
-            color: #333;
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .status-panel {
-            background: #f8f9fa;
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 30px;
-        }
-
-        .status-item {
-            display: flex;
-            justify-content: space-between;
             align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #e9ecef;
+            justify-content: center;
+            line-height: 1;
+            box-sizing: border-box;
         }
-
-        .status-item:last-child {
+        
+        .language-btn:hover {
+            border-color: rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+        }
+        
+        .language-btn.active {
+            background: rgba(255, 255, 255, 0.9);
+            color: #667eea;
+            border-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+        }
+  /* 自定义TTS选择器组件 */
+        .custom-tts-selector {
+            position: relative;
+            min-width: 120px;
+        }
+        
+        .custom-tts-select {
+            padding: 8px 40px 8px 16px;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-radius: 20px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.1) 100%);
+            color: white;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(12px);
+            outline: none;
+            min-width: 100px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .custom-tts-select:hover {
+            border-color: rgba(255, 255, 255, 0.8);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(255, 255, 255, 0.3);
+        }
+        
+        .custom-tts-select.active {
+            border-color: rgba(255, 255, 255, 0.9);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.2) 100%);
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.15);
+            border-radius: 20px 20px 0 0;
+        }
+        
+        /* 自定义下拉箭头 */
+        .custom-tts-selector::after {
+            content: '▼';
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 10px;
+            pointer-events: none;
+            transition: transform 0.3s ease;
+        }
+        
+        .custom-tts-selector.active::after {
+            transform: translateY(-50%) rotate(180deg);
+        }
+        
+        /* 自定义下拉菜单 */
+        .custom-tts-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 0 0 20px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-top: none;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            z-index: 99;
+            display: none;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .custom-tts-dropdown.active {
+            display: block;
+        }
+        
+        .custom-tts-option {
+            padding: 12px 16px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .custom-tts-option:last-child {
             border-bottom: none;
         }
-
-        .status-label {
-            font-weight: 600;
-            color: #495057;
+        
+        .custom-tts-option:hover {
+            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+            transform: translateX(5px);
+        }
+        
+        .custom-tts-option.selected {
+            background: linear-gradient(135deg, #4a5fcf 0%, #5d3785 100%);
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* 自定义滚动条 */
+        .custom-tts-dropdown::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .custom-tts-dropdown::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+        
+        .custom-tts-dropdown::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 3px;
         }
 
-        .status-value {
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            font-weight: 600;
-        }
-
-        .status-connected {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .status-disconnected {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .status-waiting {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .control-panel {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .btn {
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 25px;
-            font-size: 1.1em;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin: 0 10px;
-            min-width: 150px;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-        }
-
-        .btn:disabled {
-            background: #6c757d;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .btn-recording {
-            background: linear-gradient(45deg, #dc3545, #c82333);
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-
-        .chat-area {
-            background: #f8f9fa;
-            border-radius: 15px;
-            padding: 20px;
-            max-height: 300px;
+        .chat-messages {
+            flex: 1;
             overflow-y: auto;
-            margin-bottom: 20px;
+            padding: 20px;
+            background: #fafafa;
+            scroll-behavior: smooth;
         }
-
+        
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+        
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        
         .message {
-            margin-bottom: 15px;
-            padding: 15px;
-            border-radius: 15px;
-            max-width: 80%;
+            margin-bottom: 0;
+            display: flex;
+            animation: slideIn 0.3s ease;
         }
-
-        .message-user {
-            background: #007bff;
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .message.user {
+            justify-content: flex-end;
+        }
+        
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            position: relative;
+        }
+        
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            margin-left: auto;
-            text-align: right;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            border-radius: 18px 0px 18px 18px;
         }
-
-        .message-ai {
-            background: #e9ecef;
-            color: #333;
+        
+        .message.assistant .message-content {
+            background: white;
+            border: 1px solid #e9ecef;
+            color: #212529;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 0px 18px 18px 18px;
         }
-
-        .message-system {
-            background: #fff3cd;
-            color: #856404;
+        
+        .status-indicator {
+            padding: 10px;
             text-align: center;
-            max-width: 100%;
-        }
-
-        .audio-visualizer {
-            width: 100%;
-            height: 80px;
-            background: #333;
-            border-radius: 10px;
-            margin-bottom: 20px;
+            font-size: 14px;
+            color: #6c757d;
+            background: #f8f9fa;
+            transition: all 0.3s ease;
+            border-radius: 8px;
             position: relative;
             overflow: hidden;
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
-
-        .visualizer-bar {
-            position: absolute;
-            bottom: 0;
-            width: 4px;
-            background: linear-gradient(to top, #667eea, #764ba2);
-            border-radius: 2px 2px 0 0;
-            transition: height 0.1s ease;
+        
+        .status-indicator.connected {
+            color: #28a745;
         }
-
-        .instructions {
-            background: #e7f3ff;
-            border-left: 4px solid #007bff;
-            padding: 15px;
-            border-radius: 0 10px 10px 0;
-            margin-top: 20px;
+        
+        .status-indicator.disconnected {
+            color: #dc3545;
         }
+        
+        /* 语音活动检测状态指示器特效 */
 
-        .instructions h3 {
-            color: #007bff;
-            margin-bottom: 10px;
+        
+        @keyframes vadPulse {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.02);
+            }
+            100% {
+                transform: scale(1);
+            }
         }
-
-        .instructions ul {
-            list-style-type: none;
-            padding-left: 0;
-        }
-
-        .instructions li {
-            padding: 5px 0;
-            color: #495057;
-        }
-
-        .instructions li:before {
-            content: "•";
-            color: #007bff;
-            font-weight: bold;
-            display: inline-block;
-            width: 1em;
-            margin-left: -1em;
-        }
-
+        
+        /* 移动端响应式优化 */
         @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
             .container {
-                padding: 20px;
-                margin: 10px;
+                height: 96vh;
+                border-radius: 16px;
             }
-
-            .header h1 {
-                font-size: 2em;
+            
+            
+            .chat-messages {
+                padding: 15px;
             }
-
-            .btn {
-                display: block;
-                width: 100%;
-                margin: 10px 0;
+              
+            .message-content {
+                max-width: 85%;
+            }
+               
+    }   
+        /* 思考指示器 - 三个点动画 */
+        .thinking-dots {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 0;
+            height: 16px; /* 匹配文本行高 */
+        }
+        
+        .thinking-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #6c757d;
+            animation: thinking 1.4s ease-in-out infinite;
+        }
+        .thinking-dot-assitant {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #f8f9fa;
+            animation: thinking 1.4s ease-in-out infinite;
+        }
+        
+        .thinking-dot:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+        
+        .thinking-dot:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+        
+        @keyframes thinking {
+            0%, 80%, 100% {
+                transform: scale(0.8);
+                opacity: 0.5;
+            }
+            40% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        
+        /* 连接状态动画 */
+        .status-indicator.connected::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #28a745;
+            margin-right: 8px;
+            animation: blink 2s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+        
+        /* 用户语音消息指示器 */
+        .user-voice-message-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 18px 18px 0px 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            color: white;
+        }
+        
+        /* 助手语音消息指示器 */
+        .assistant-voice-message-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 12px;
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 18px 18px 18px 0px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            color: #212529;
+        }
+        
+        .user-voice-message-indicator:hover {
+            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        }
+        
+        .assistant-voice-message-indicator:hover {
+            background: #f8f9fa;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .user-voice-message-indicator .play-btn {
+            color: white;
+        }
+        
+        .assistant-voice-message-indicator .play-btn {
+            color: #667eea;
+        }
+        
+        .user-voice-message-indicator.playing .play-btn {
+            color: #ff6b6b;
+        }
+        
+        .assistant-voice-message-indicator.playing .play-btn {
+            color: #dc3545;
+        }
+        
+        /* 错误状态样式 */
+        .user-voice-message-indicator.error .play-btn,
+        .assistant-voice-message-indicator.error .play-btn {
+            color: #ffc107;
+            animation: pulseError 0.6s ease-in-out 3;
+        }
+        
+        @keyframes pulseError {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        /* 播放按钮悬停效果 */
+        .user-voice-message-indicator:hover .play-btn,
+        .assistant-voice-message-indicator:hover .play-btn {
+            transform: scale(1.05);
+            transition: all 0.2s ease;
+        }
+        
+        /* 播放状态动画 */
+        .user-voice-message-indicator.playing,
+        .assistant-voice-message-indicator.playing {
+            animation: pulsePlaying 2s infinite;
+        }
+        
+        @keyframes pulsePlaying {
+            0%, 100% { 
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% { 
+                transform: scale(1.02);
+                opacity: 0.9;
             }
         }
     </style>
 </head>
 <body>
-    <div class="app-container">
-        <!-- Header部分 -->
-        <div class="header">
-            <div class="header-title">🤖 AI Chat ASR</div>
-            <div class="header-menu">
-                <button id="languageBtn" class="menu-btn" onclick="toggleLanguage()">English</button>
-                <button id="conversationBtn" class="menu-btn" onclick="toggleConversation()" disabled>开始对话</button>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1 class="app-title" id="appTitle">AI语音聊天系统</h1>
+                <!-- 右侧控制组件 -->
+                <div class="header-controls">
+                    <!-- 语言选择器 -->
+                    <button class="language-btn" id="languageToggle" onclick="toggleLanguage()">
+                        中
+                    </button>
+                    <!-- 自定义TTS引擎选择器 -->
+                    <div class="custom-tts-selector" id="customTtsSelector">
+                        <div class="custom-tts-select" id="customTtsSelect">pyttsx3</div>
+                        <div class="custom-tts-dropdown" id="customTtsDropdown">
+                            <div class="custom-tts-option" data-value="pyttsx3">pyttsx3</div>
+                            <div class="custom-tts-option" data-value="gtts">gTTS</div>
+                            <div class="custom-tts-option" data-value="edgetts">EdgeTTS</div>
+                            <div class="custom-tts-option" data-value="elevenlabs">ElevenLabs</div>
+                        </div>
+                    </div>
+                </div>
             </div>
+        </header>
+        
+        <!-- 共享状态指示器和消息区域 -->
+        <div class="status-indicator" id="status">
+            连接状态：未连接
         </div>
-
-        <!-- 状态指示器 -->
-        <div id="statusIndicator" class="status-indicator status-disconnected">
-            连接状态: 未连接
-        </div>
-
-        <!-- 消息列表 -->
-        <div class="message-container" id="messageContainer">
-            <div class="message message-system">
-                正在连接服务器并启动录音...
-            </div>
-        </div>
+        <div class="chat-messages" id="messages"></div>
     </div>
 
+    <!-- ONNX Runtime Web 和 VAD Web 库 -->
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.27/dist/bundle.min.js"></script>
+    
+    <!-- 颜色插值函数 -->
+    <script type="module">
+        import { interpolateInferno } from "https://cdn.skypack.dev/d3-scale-chromatic@3";
+        window.interpolateInferno = interpolateInferno;
+    </script>
+    
     <script>
-        class VoiceChatClient {
-            constructor() {
-                this.ws = null;
-                this.isRecording = false;
-                this.isConnected = false;
-                this.mediaRecorder = null;
-                this.audioContext = null;
-                this.analyser = null;
-                this.audioStream = null;
-                this.wakeWordDetected = false;
-                this.isConversationActive = false;
-                this.currentLanguage = 'zh-CN'; // 默认中文
+        let ws = null;
+        let mediaRecorder = null;
+        let isRecording = false;
+        let reconnectAttempts = 0;
+        const MAX_RECONNECT_ATTEMPTS = 5;
+        const RECONNECT_DELAY = 3000;
+        let currentLanguage = 'zh';  // 当前语言：'zh' 或 'en'
+        let currentTtsEngine = null;  // 获取当前TTS引擎值（带缓存优化）
+        let isWaitingForResponse = false; // 是否正在等待AI回复
+      
+        // 初始化
+        function init() {
+            // 从localStorage加载保存的语言选择
+            const savedLanguage = localStorage.getItem('selectedLanguage');
+            if (savedLanguage) {
+                currentLanguage = savedLanguage;
+            }
+            connectWebSocket();
+            setupCustomLanguageSelector(currentLanguage);
+            setupCustomTtsSelector();
+        }        
+        // 页面加载时初始化VAD
+        window.onload = function() {
+            console.log('页面加载完成，开始初始化VAD...');
+            initVAD();
+            startVAD();
+        };
+ // 初始化VAD
+        function initVAD() {
+            console.log('检查window.vad对象...');
+            
+            // 检查VAD库是否已加载
+            if (window.vad && window.vad.MicVAD) {
+                console.log('✅ VAD库已加载完成');
+            } else {
+                console.log('⏳ VAD库还在加载中...');                
+                // 等待一段时间后重试
+                setTimeout(initVAD, 500);
+            }
+        }
+         // 开始VAD监听
+        async function startVAD() {
+            if (!window.vad || !window.vad.MicVAD) {
+                showError('VAD库还未加载完成，请稍后再试');
+                return;
             }
 
-            // 页面加载时自动连接和录音
-            async initialize() {
-                this.addMessage('系统', '正在连接服务器...', 'system');
-                await this.connect();
-                
-                if (this.isConnected) {
-                    this.addMessage('系统', '正在启动录音...', 'system');
-                    await this.startRecording();
-                    this.addMessage('系统', '系统已就绪，请说出唤醒词开始对话', 'system');
-                }
-            }
+            try {
+                console.log('开始创建VAD实例...');
 
-            async connect() {
-                try {
-                    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                    const wsUrl = `${protocol}//${window.location.host}/ws`;
-                    
-                    this.ws = new WebSocket(wsUrl);
-                    
-                    this.ws.onopen = () => {
-                        this.isConnected = true;
-                        this.updateStatusIndicator('已连接', 'status-connected');
-                        document.getElementById('conversationBtn').disabled = false;
-                        this.addMessage('系统', '服务器连接成功！', 'system');
-                    };
-                    
-                    this.ws.onmessage = (event) => {
-                        this.handleMessage(JSON.parse(event.data));
-                    };
-                    
-                    this.ws.onclose = () => {
-                        this.isConnected = false;
-                        this.updateStatusIndicator('未连接', 'status-disconnected');
-                        document.getElementById('conversationBtn').disabled = true;
-                        this.addMessage('系统', '服务器连接已断开', 'system');
-                    };
-                    
-                    this.ws.onerror = (error) => {
-                        console.error('WebSocket错误:', error);
-                        this.addMessage('系统', '连接错误，请检查服务器状态', 'system');
-                    };
-                    
-                } catch (error) {
-                    console.error('连接失败:', error);
-                    this.addMessage('系统', '连接失败: ' + error.message, 'system');
-                }
-            }
-
-            async startRecording() {
-                try {
-                    // 请求麦克风权限
-                    this.audioStream = await navigator.mediaDevices.getUserMedia({ 
-                        audio: {
-                            sampleRate: 16000,
-                            channelCount: 1,
-                            echoCancellation: true,
-                            noiseSuppression: true
-                        } 
-                    });
-
-                    // 创建MediaRecorder
-                    this.mediaRecorder = new MediaRecorder(this.audioStream, {
-                        mimeType: 'audio/webm;codecs=opus'
-                    });
-
-                    let audioChunks = [];
-                    
-                    this.mediaRecorder.ondataavailable = (event) => {
-                        if (event.data.size > 0) {
-                            audioChunks.push(event.data);
+                // 创建VAD实例 - 根据官方文档，不需要显式传递stream
+                vadInstance = await window.vad.MicVAD.new({
+                    model: "v5",
+                    positiveSpeechThreshold: 0.4,
+                    negativeSpeechThreshold: 0.4,
+                    minSpeechFrames: 15,
+                    preSpeechPadFrames: 30,
+                    onSpeechStart: () => {
+                        console.log('🎤 检测到语音开始');
+                        isRecording = true;
+                    },
+                    onFrameProcessed: (probs, frame) => {
+                        const indicatorColor = interpolateInferno(probs.isSpeech / 2);
+                        document.body.style.setProperty("--indicator-color", indicatorColor);
+                        
+                        // 更新status的视觉效果
+                        const status = document.getElementById('status');
+                        if (status) {
+                            // 根据语音概率动态调整视觉效果
+                            const speechProbability = probs.isSpeech;
+                            
+                            // 当检测到语音时添加活动状态
+                            if (speechProbability > 0.3) {
+                                status.classList.add('vad-active');
+                                // 动态调整背景渐变强度
+                                status.style.background = `radial-gradient(circle at center, ${indicatorColor} ${speechProbability * 50}%, #f8f9fa 100%)`;
+                            } else {
+                                status.classList.remove('vad-active');
+                                // 恢复默认渐变
+                                status.style.background = `radial-gradient(circle at center, var(--indicator-color, #f8f9fa) 0%, #f8f9fa 100%)`;
+                            }
                         }
-                    };
-
-                    this.mediaRecorder.onstop = async () => {
-                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                        audioChunks = [];
+                    },
+                    onSpeechEnd: (audioData) => {
+                        console.log('⏹️ 检测到语音结束');
+                        isRecording = false;
                         
-                        // 将音频转换为base64并发送
-                        const arrayBuffer = await audioBlob.arrayBuffer();
-                        const base64Audio = this.arrayBufferToBase64(arrayBuffer);
-                        
-                        this.sendAudioData(base64Audio);
-                    };
+                        // 处理录制的音频数据
+                        if (audioData && audioData.length > 0) {
+                            // 直接使用VAD工具函数处理音频数据
+                            const wavBuffer = vad.utils.encodeWAV(audioData);
+                            const base64 = vad.utils.arrayBufferToBase64(wavBuffer);
+                            // 使用统一的音频消息发送函数
+                            const success = sendAudioMessageData(base64);
+                        } else {
+                            console.warn('VAD没有提供音频数据');
+                        }
+                    },
+                    onnxWASMBasePath: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/",
+                    baseAssetPath: "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.27/dist/"
+                });
 
-                    // 开始录音（每2秒发送一次数据）
-                    this.mediaRecorder.start(2000);
-                    this.isRecording = true;
-                    
-                    this.updateStatusIndicator('录音中', 'status-recording');
-                    this.addMessage('系统', '录音已启动，请说出唤醒词开始对话', 'system');
-                    
-                } catch (error) {
-                    console.error('录音启动失败:', error);
-                    this.addMessage('系统', '录音启动失败: ' + error.message, 'system');
-                }
-            }
-
-            stopRecording() {
-                if (this.mediaRecorder && this.isRecording) {
-                    this.mediaRecorder.stop();
-                    this.isRecording = false;
-                    
-                    // 关闭音频流
-                    if (this.audioStream) {
-                        this.audioStream.getTracks().forEach(track => track.stop());
-                    }
-                    
-                    this.updateStatusIndicator('已连接', 'status-connected');
-                    this.addMessage('系统', '录音已停止', 'system');
-                }
-            }
-
-            // 切换对话状态
-            toggleConversation() {
-                if (this.isConversationActive) {
-                    this.stopConversation();
-                } else {
-                    this.startConversation();
-                }
-            }
-
-            startConversation() {
-                this.isConversationActive = true;
-                document.getElementById('conversationBtn').textContent = '结束对话';
-                document.getElementById('conversationBtn').classList.add('menu-btn-recording');
-                this.addMessage('系统', '对话已开始，请说话', 'system');
-            }
-
-            stopConversation() {
-                this.isConversationActive = false;
-                document.getElementById('conversationBtn').textContent = '开始对话';
-                document.getElementById('conversationBtn').classList.remove('menu-btn-recording');
-                this.addMessage('系统', '对话已结束', 'system');
-            }
-
-            // 切换语言
-            toggleLanguage() {
-                if (this.currentLanguage === 'zh-CN') {
-                    this.currentLanguage = 'en-US';
-                    document.getElementById('languageBtn').textContent = '中文';
-                    this.addMessage('系统', '已切换到英文模式', 'system');
-                } else {
-                    this.currentLanguage = 'zh-CN';
-                    document.getElementById('languageBtn').textContent = 'English';
-                    this.addMessage('系统', '已切换到中文模式', 'system');
-                }
-            }
-
-            sendAudioData(base64Audio) {
-                if (this.ws && this.isConnected) {
-                    this.ws.send(JSON.stringify({
-                        type: 'audio',
-                        data: base64Audio
-                    }));
-                }
-            }
-
-            handleMessage(message) {
-                switch (message.type) {
-                    case 'connection':
-                        this.addMessage('系统', message.message, 'system');
-                        break;
-                        
-                    case 'wake_word':
-                        this.wakeWordDetected = true;
-                        this.addMessage('系统', `唤醒词"${message.word}"检测成功！对话开始`, 'system');
-                        this.startConversation();
-                        break;
-                        
-                    case 'asr_result':
-                        this.addMessage('用户', message.text, 'user');
-                        break;
-                        
-                    case 'tts_audio':
-                        this.addMessage('AI助手', message.text, 'ai');
-                        this.playAudio(message.audio);
-                        break;
-                        
-                    case 'control':
-                        this.addMessage('系统', message.message, 'system');
-                        break;
-                        
-                    case 'error':
-                        this.addMessage('系统', '错误: ' + message.message, 'system');
-                        break;
-                }
-            }
-
-            playAudio(base64Audio) {
-                try {
-                    const audioData = this.base64ToArrayBuffer(base64Audio);
-                    const audioContext = new AudioContext();
-                    
-                    audioContext.decodeAudioData(audioData, (buffer) => {
-                        const source = audioContext.createBufferSource();
-                        source.buffer = buffer;
-                        source.connect(audioContext.destination);
-                        source.start();
-                    });
-                } catch (error) {
-                    console.error('播放音频失败:', error);
-                }
-            }
-
-            addMessage(sender, text, type) {
-                const messageContainer = document.getElementById('messageContainer');
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `message message-${type}`;
-                messageDiv.innerHTML = `<strong>${sender}:</strong> ${text}`;
+                vadInstance.start();
+                console.log('VAD监听已启动');
                 
-                messageContainer.appendChild(messageDiv);
-                messageContainer.scrollTop = messageContainer.scrollHeight;
-            }
-
-            updateStatusIndicator(text, className) {
-                const indicator = document.getElementById('statusIndicator');
-                indicator.textContent = `连接状态: ${text}`;
-                indicator.className = `status-indicator ${className}`;
-            }
-
-            resetConversation() {
-                this.wakeWordDetected = false;
-                this.stopConversation();
-                
-                const messageContainer = document.getElementById('messageContainer');
-                messageContainer.innerHTML = '<div class="message message-system">对话已重置</div>';
-                
-                this.addMessage('系统', '对话已重置，请说出唤醒词开始新的对话', 'system');
-            }
-
-            // 工具函数
-            arrayBufferToBase64(buffer) {
-                let binary = '';
-                const bytes = new Uint8Array(buffer);
-                for (let i = 0; i < bytes.byteLength; i++) {
-                    binary += String.fromCharCode(bytes[i]);
-                }
-                return btoa(binary);
-            }
-
-            base64ToArrayBuffer(base64) {
-                const binary = atob(base64);
-                const bytes = new Uint8Array(binary.length);
-                for (let i = 0; i < binary.length; i++) {
-                    bytes[i] = binary.charCodeAt(i);
-                }
-                return bytes.buffer;
+            } catch (error) {
+                console.error('启动VAD失败:', error);
+                showError('启动语音检测失败: ' + error.message);
             }
         }
 
-        // 创建客户端实例
-        const voiceChat = new VoiceChatClient();
+        // 停止VAD监听
+        function stopVAD() {
+            if (vadInstance) {
+                vadInstance.pause();
+                vadInstance = null;
+            }
 
-        // 全局函数
+            isRecording = false;
+            
+            // 清除VAD动画效果，恢复默认状态
+            const status = document.getElementById('status');
+            if (status) {
+                status.classList.remove('vad-active');
+                status.style.background = ''; // 清除动态背景
+            }
+            
+            console.log('VAD监听已停止');
+        }
+
+        
+        // 切换语言
         function toggleLanguage() {
-            voiceChat.toggleLanguage();
+            currentLanguage = currentLanguage === 'zh' ? 'en' : 'zh';
+            
+            // 保存到localStorage
+            localStorage.setItem('selectedLanguage', currentLanguage);
+            // 更新界面文本
+            setupCustomLanguageSelector(currentLanguage);
+        }
+        
+        // 更新界面语言
+        function setupCustomLanguageSelector(lang) {
+            const languageBtn = document.getElementById('languageToggle');
+            languageBtn.textContent = lang === 'zh' ? '中' : 'EN';
+            languageBtn.setAttribute('aria-label', lang === 'zh' ? '切换到英文' : 'Switch to Chinese');
+            const elements = {
+                'app-title': lang === 'zh' ? 'AI语音聊天系统' : 'AI Voice Chat System',
+            };
+            
+            // 更新元素文本
+            document.getElementById('appTitle').textContent = elements['app-title'];
+            
+            // 更新状态指示器（现在使用共享的status）
+            const status = document.getElementById('status');
+            
+            // 更新状态的双语文本（同时检查中英文状态）
+            if (status.textContent.includes('已连接') || status.textContent.includes('Connected')) {
+                status.textContent = lang === 'zh' ? '连接状态：已连接' : 'Status: Connected';
+            } else if (status.textContent.includes('已断开') || status.textContent.includes('Disconnected')) {
+                status.textContent = lang === 'zh' ? '连接状态：已断开' : 'Status: Disconnected';
+            } else if (status.textContent.includes('连接错误') || status.textContent.includes('Connection Error')) {
+                status.textContent = lang === 'zh' ? '连接状态：连接错误' : 'Status: Connection Error';
+            } else if (status.textContent.includes('尝试重新连接') || status.textContent.includes('Attempting to reconnect')) {
+                const matches = status.textContent.match(/(?:尝试重新连接|Attempting to reconnect) \((\d+)\/(\d+)\)\.\.\./);
+                if (matches) {
+                    status.textContent = lang === 'zh' ? `尝试重新连接 (${matches[1]}/${matches[2]})...` : `Attempting to reconnect (${matches[1]}/${matches[2]})...`;
+                }
+            } else if (status.textContent.includes('连接失败') || status.textContent.includes('Connection failed')) {
+                status.textContent = lang === 'zh' ? '连接失败，请刷新页面重试' : 'Connection failed, please refresh the page';
+            }
         }
 
-        function toggleConversation() {
-            voiceChat.toggleConversation();
+        
+        // 统一WebSocket连接函数
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}/ws/chat`);
+    
+            ws.onopen = () => {
+                updateStatus('status', '已连接', true);
+                reconnectAttempts = 0;
+                console.log('WS连接成功');
+            };
+        
+            ws.onmessage = async (event) => {
+                const data = JSON.parse(event.data);// 现在使用共享的messages
+                console.log('WS消息接收:', data);
+                if (data.type === 'error'||data.status === 'end') {
+                    updateStatus('status', '已连接', true);
+                    isWaitingForResponse = false;
+                    const sendBtn = document.querySelector('.btn-primary');
+                    if (sendBtn) {
+                        sendBtn.disabled = false;
+                    }
+                }
+                // 根据后端ResponseHandler的消息格式处理
+                if (data.type === 'error') {
+                    // 处理错误消息
+                    handleErrorMessage(data);
+                }else{
+                    handleTextMessage(data);
+                    handleAudioMessage(data);
+                }
+                
+            };
+                       
+            ws.onerror = (error) => {
+                console.error('WebSocket连接错误:', error);
+                updateStatus('status', '连接错误', false);
+            };
+            
+            ws.onclose = () => {
+                updateStatus('status', '已断开', false);
+                attemptReconnect(() => connectWebSocket());
+            };
+        }
+        
+
+        
+        // 尝试重新连接
+        function attemptReconnect(connectFunction) {
+            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                reconnectAttempts++;
+                const delay = RECONNECT_DELAY * Math.pow(2, reconnectAttempts - 1);
+                
+                // 使用状态映射表中的键来确保双语支持（现在使用共享的status）
+                updateStatus('status', 
+                           `尝试重新连接 (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`, false);
+                
+                setTimeout(() => {
+                    connectFunction();
+                }, delay);
+            } else {
+                updateStatus('status', 
+                           '连接失败，请刷新页面重试', false);
+            }
+        }
+        
+        // 封装WebSocket发送消息函数
+        function sendWebSocketMessage(messageData, options = {}) {
+            // 检查是否正在等待回复
+            if (isWaitingForResponse) {
+                showError('请等待当前回复完成后再发送新消息');
+                return false;
+            }
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                // 发送消息到后端
+                ws.send(JSON.stringify(messageData));
+                console.log('WS消息发送:', messageData);
+                
+                // 执行可选的回调函数
+                if (options.onSuccess) {
+                    options.onSuccess();
+                }
+                
+                // 设置等待状态
+                isWaitingForResponse = true;
+                // 禁用发送按钮
+                const sendBtn = document.querySelector('.btn-primary');
+                sendBtn.disabled = true;
+                
+                return true;
+            } else {
+                console.error('WebSocket连接未就绪，无法发送消息');
+                showError('连接未就绪，请检查连接状态');
+                return false;
+            }
         }
 
-        function resetConversation() {
-            voiceChat.resetConversation();
+        
+       
+      
+        
+        // 统一的音频消息发送函数
+        function sendAudioMessageData(base64Audio) {
+            const messageId = 'msg_' + Date.now();
+            // 准备音频消息数据
+            const messageData = {
+                type: 'audio',
+                audio_data: base64Audio,
+                message_id: messageId,
+                language: currentLanguage,
+                tts_engine: getCurrentTtsEngine()
+            };
+            
+            // 使用封装的发送函数
+            const success = sendWebSocketMessage(messageData, {
+                onSuccess: () => {
+                    // 添加语音消息
+                    addVoiceMessage('user', messageId, base64Audio);
+                }
+            });
+            
+            return success;
         }
-
-        // 页面加载时自动初始化
-        window.addEventListener('load', () => {
-            // 检查浏览器是否支持Web Audio API
-            if (!window.AudioContext && !window.webkitAudioContext) {
-                alert('您的浏览器不支持Web Audio API，请使用现代浏览器如Chrome、Firefox或Edge。');
+        
+        // 发送音频消息（处理Blob格式）
+        async function sendAudioMessage(audioBlob) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const base64Audio = reader.result.split(',')[1];
+                    const success = sendAudioMessageData(base64Audio);
+                    resolve(success);
+                };
+                reader.readAsDataURL(audioBlob);
+            });
+        }
+    
+        
+        // 统一的消息流式更新函数 - 优化支持后端status字段
+        let currentStreamMessages = {};
+        
+        function handleTextMessage(data) {
+            const { role,type, content, status, message_id } = data;
+            const messagesDiv = document.getElementById('messages');
+            const messageKey = `${messagesDiv.id}_${role}_${message_id || 'default'}`;
+            // 处理start状态 - 开始新的消息流
+            if (status === 'start') {
+                // 创建新的消息元素
+                currentStreamMessages[messageKey] = document.createElement('div');
+                currentStreamMessages[messageKey].className = `message ${role}`;
+                
+                // 根据角色设置不同的思考指示器
+                const dotClass = role === 'user' ? 'thinking-dot-assitant' : 'thinking-dot';
+                
+                currentStreamMessages[messageKey].innerHTML = `
+                    <div class="message-content">
+                        <div class="thinking-dots">
+                            <div class="${dotClass}"></div>
+                            <div class="${dotClass}"></div>
+                            <div class="${dotClass}"></div>
+                        </div>
+                    </div>
+                `;
+                messagesDiv.appendChild(currentStreamMessages[messageKey]);
+                
+                console.log(`创建新消息流: ${messageKey}`);
             }
             
-            // 检查是否支持MediaRecorder
-            if (!navigator.mediaDevices || !window.MediaRecorder) {
-                alert('您的浏览器不支持录音功能，请使用现代浏览器如Chrome、Firefox或Edge。');
+            // 处理continue状态 - 更新消息内容
+            else if (status === 'continue' && type === 'text' && currentStreamMessages[messageKey]) {
+                const messageContent = currentStreamMessages[messageKey].querySelector('.message-content');
+                if (messageContent) {
+                    const thinkingDots = messageContent.querySelector('.thinking-dots');
+                    // 如果有内容需要显示
+                    if (content && content.trim() !== '') {
+                        // 如果思考指示器还存在，先移除它
+                        if (thinkingDots && thinkingDots.parentNode) {
+                            thinkingDots.remove();
+                        }
+                        
+                        // 获取或创建文本元素
+                        let textElement = messageContent.querySelector('span');
+                        if (!textElement) {
+                            textElement = document.createElement('span');
+                            messageContent.appendChild(textElement);
+                        }
+                        textElement.textContent += content;
+                    }
+                }
             }
             
-            voiceChat.initialize();
+            // 处理end状态 - 结束消息流
+            else if (status === 'end' && currentStreamMessages[messageKey]) {
+                const messageContent = currentStreamMessages[messageKey].querySelector('.message-content');
+                if (messageContent) {
+                    // 移除可能存在的思考指示器
+                    const thinkingDots = messageContent.querySelector('.thinking-dots');
+                    if (thinkingDots && thinkingDots.parentNode) {
+                        thinkingDots.remove();
+                        
+                        // 如果没有内容，添加一个空文本元素
+                        if (!messageContent.querySelector('span')) {
+                            const textElement = document.createElement('span');
+                            messageContent.appendChild(textElement);
+                            if (content && content.trim() !== '') {
+                                textElement.textContent += content;
+                            }
+                        }
+                    }
+                }
+                
+                // 清理消息流状态
+                delete currentStreamMessages[messageKey];
+                console.log(`结束消息流: ${messageKey}`);
+            }
+            
+            // 确保消息容器滚动到底部
+            if (currentStreamMessages[messageKey]) {
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+        }
+
+        // 添加语音消息（语音指示器直接作为消息）- 优化消息关联逻辑
+        function addVoiceMessage(role, messageId = null, base64Audio = null) {
+            const messageKey = `${messageId}_${role}`;
+            const isUser = role === 'user';
+            const cssClass = isUser ? 'user-voice-message-indicator' : 'assistant-voice-message-indicator';
+            
+            const voiceElement = `
+                <div class="${cssClass}" id="${messageKey}" onclick="toggleAudioPlayback('${messageKey}', '${base64Audio}')">
+                    <div class="play-btn">
+                        <i class="fas fa-play"></i>
+                    </div>
+                </div>
+            `;
+            
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            messageDiv.innerHTML = voiceElement;
+            
+            // 语音消息插入到消息列表的末尾（最后一条消息的上方）
+            const lastChild = messagesDiv.lastChild;
+            if (lastChild&&role==='assistant') {
+                messagesDiv.insertBefore(messageDiv, lastChild);
+            } else {
+                messagesDiv.appendChild(messageDiv);
+            }
+            
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        // 更新状态（支持双语）
+        function updateStatus(statusId, text, isConnected) {
+            const status = document.getElementById(statusId);
+            
+            // 状态文本的双语映射
+            const statusTextMap = {
+                '已连接': currentLanguage === 'zh' ? '已连接' : 'Connected',
+                '已断开': currentLanguage === 'zh' ? '已断开' : 'Disconnected',
+                '连接错误': currentLanguage === 'zh' ? '连接错误' : 'Connection Error',
+                '尝试重新连接': currentLanguage === 'zh' ? '尝试重新连接' : 'Attempting to reconnect',
+                '连接失败，请刷新页面重试': currentLanguage === 'zh' ? '连接失败，请刷新页面重试' : 'Connection failed, please refresh the page',
+                '已连接 - 可以开始说话': currentLanguage === 'zh' ? '已连接 - 可以开始说话' : 'Connected - You can start speaking'
+            };
+            
+            // 获取对应的双语文本，如果没有映射则使用原文本
+            const localizedText = statusTextMap[text] || text;
+            status.textContent = localizedText;
+            status.className = `status-indicator ${isConnected ? 'connected' : 'disconnected'}`;
+        }
+        
+        function handleAudioMessage(data) {
+            const { role, type, content, status, message_id } = data;
+            if (type === 'audio') {
+                // 处理开始音频消息 - 创建语音消息指示器
+                addVoiceMessage(role, message_id, content);
+                toggleAudioPlayback(`${message_id}_${role}`, content);
+            }
+        }
+        
+          // 音频播放控制
+        let currentAudio = null;
+        let currentAudioElement = null;
+        function toggleAudioPlayback(messageKey, base64Audio) {
+            const audioElement = document.getElementById(messageKey);
+            // 如果正在播放当前音频，则停止
+            if (currentAudioElement === audioElement && currentAudio) {
+                stopAudioPlayback();
+                return;
+            }
+            
+            // 如果正在播放其他音频，先停止
+            if (currentAudio) {
+                stopAudioPlayback();
+            }
+            
+            // 开始播放新音频
+            updateAudioPlaybackButton(messageKey, true);
+            startAudioPlayback(audioElement, base64Audio);
+        }
+        
+        // 开始音频播放 - 修复版本
+        async function startAudioPlayback(audioElement, base64Audio) {
+            try {
+                currentAudio = new Audio('data:audio/mp3;base64,' + base64Audio);
+                // 设置音频事件
+                currentAudio.onended = () => {
+                    stopAudioPlayback();
+                };
+                
+                currentAudio.onerror = (error) => {
+                    console.error('音频播放错误:', error);
+                    stopAudioPlayback();
+                };
+                
+                // 开始播放
+                currentAudio.play().catch(error => {
+                    console.error('播放失败:', error);
+                    stopAudioPlayback();
+                });
+                currentAudioElement = audioElement;
+            } catch (error) {
+                console.error('创建音频失败:', error);
+                stopAudioPlayback();
+            }
+        }
+            
+        function stopAudioPlayback() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+                currentAudio = null;
+            }
+            
+            if (currentAudioElement) {
+                currentAudioElement.classList.remove('playing');
+                const playIcon = currentAudioElement.querySelector('.play-btn i');
+                playIcon.className = 'fas fa-play';
+                currentAudioElement = null;
+            }
+        }
+            
+            // 更新音频播放按钮状态
+            function updateAudioPlaybackButton(messageKey, isPlaying) {
+                const audioElement = document.getElementById(messageKey);
+                if (audioElement) {
+                    const playBtn = audioElement.querySelector('.play-btn i');
+                    if (playBtn) {
+                        if (isPlaying) {
+                            audioElement.classList.add('playing');
+                            playBtn.className = 'fas fa-stop';
+                        } else {
+                            audioElement.classList.remove('playing');
+                            playBtn.className = 'fas fa-play';
+                        }
+                    }
+                }
+            }
+        // 处理错误消息 - 优化错误处理和状态管理
+        function handleErrorMessage(data) {
+            console.error('WebSocket错误消息:', data);
+            
+            // 显示错误信息
+            const errorMessage = data.content || '发生未知错误';
+            showError(errorMessage);
+        }
+        
+        // 更新录音按钮
+        function updateRecordButton(isRecording) {
+            const btn = document.getElementById('recordBtn');
+            if (isRecording) {
+                btn.innerHTML = currentLanguage === 'zh' ? 
+                    '<i class="fas fa-stop"></i> 停止' : 
+                    '<i class="fas fa-stop"></i> Stop';
+                btn.classList.add('recording');
+                btn.setAttribute('aria-label', currentLanguage === 'zh' ? '停止' : 'Stop');
+            } else {
+                btn.innerHTML = currentLanguage === 'zh' ? 
+                    '<i class="fas fa-microphone"></i> 录音' : 
+                    '<i class="fas fa-microphone"></i> Record';
+                btn.classList.remove('recording');
+                btn.setAttribute('aria-label', currentLanguage === 'zh' ? '录音' : 'Record');
+            }
+        }
+        
+        // 显示错误消息
+        function showError(message) {
+            // 创建优雅的错误提示
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #dc3545;
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 1000;
+                animation: slideInRight 0.3s ease;
+            `;
+            errorDiv.textContent = message;
+            
+            document.body.appendChild(errorDiv);
+            
+            // 3秒后自动消失
+            setTimeout(() => {
+                errorDiv.style.animation = 'slideOutRight 0.3s ease';
+                setTimeout(() => errorDiv.remove(), 300);
+            }, 3000);
+        }
+        
+
+        function getCurrentTtsEngine() {
+            // 如果缓存为空，从localStorage读取
+            if (currentTtsEngine === null) {
+                currentTtsEngine = localStorage.getItem('selectedTtsEngine') || 'pyttsx3';
+            }
+            return currentTtsEngine;
+        }
+        
+        // 自定义TTS选择器功能
+        function setupCustomTtsSelector() {
+            const selector = document.getElementById('customTtsSelector');
+            const select = document.getElementById('customTtsSelect');
+            const dropdown = document.getElementById('customTtsDropdown');
+            const options = dropdown.querySelectorAll('.custom-tts-option');
+            
+            // 从localStorage加载保存的TTS选择
+            const savedTtsEngine = localStorage.getItem('selectedTtsEngine');
+            if (savedTtsEngine) {
+                currentTtsEngine = savedTtsEngine;
+                const savedOption = dropdown.querySelector(`[data-value="${currentTtsEngine}"]`);
+                if (savedOption) {
+                    select.textContent = savedOption.textContent;
+                    options.forEach(opt => opt.classList.remove('selected'));
+                    savedOption.classList.add('selected');
+                }
+            }
+            
+            // 点击选择器切换下拉菜单
+            select.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const isActive = selector.classList.contains('active');
+                
+                // 关闭所有其他下拉菜单
+                document.querySelectorAll('.custom-tts-selector').forEach(s => {
+                    if (s !== selector) {
+                        s.classList.remove('active');
+                        s.querySelector('.custom-tts-dropdown').classList.remove('active');
+                    }
+                });
+                
+                // 切换当前下拉菜单
+                selector.classList.toggle('active');
+                dropdown.classList.toggle('active');
+                
+                if (!isActive) {
+                    select.classList.add('active');
+                } else {
+                    select.classList.remove('active');
+                }
+            });
+            
+            // 点击选项
+            options.forEach(option => {
+                option.addEventListener('click', function() {
+                    const value = this.getAttribute('data-value');
+                    const text = this.textContent;
+                    
+                    // 更新显示文本
+                    select.textContent = text;
+                    
+                    // 更新选中状态
+                    options.forEach(opt => opt.classList.remove('selected'));
+                    this.classList.add('selected');
+                    
+                    // 保存到localStorage并更新缓存
+                    localStorage.setItem('selectedTtsEngine', value);
+                    currentTtsEngine = value;
+                    
+                    // 关闭下拉菜单
+                    selector.classList.remove('active');
+                    dropdown.classList.remove('active');
+                    select.classList.remove('active');
+                });
+            });
+            
+            // 点击页面其他区域关闭下拉菜单
+            document.addEventListener('click', function(e) {
+                if (!selector.contains(e.target)) {
+                    selector.classList.remove('active');
+                    dropdown.classList.remove('active');
+                    select.classList.remove('active');
+                }
+            });
+            
+            // 阻止下拉菜单内的点击事件冒泡
+            dropdown.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+            
+            // 初始化选中状态（如果没有保存的选择，使用默认值）
+            const initialValue = savedTtsEngine || 'pyttsx3';
+            const initialOption = dropdown.querySelector(`[data-value="${initialValue}"]`);
+            if (initialOption) {
+                initialOption.classList.add('selected');
+                select.textContent = initialOption.textContent;
+            }
+        }
+        
+        // 页面加载完成后初始化
+        window.addEventListener('load', function() {
+            console.log('页面加载完成，开始初始化应用');
+            init();
+            console.log('应用初始化完成');
+        });
+        
+        // 页面关闭时清理资源
+        window.addEventListener('beforeunload', () => {
+            console.log('页面即将关闭，开始清理资源');
+            if (ws) {
+                console.log('关闭WebSocket连接');
+                ws.close();
+            }
+            stopVAD();
+            console.log('资源清理完成');
         });
     </script>
 </body>
