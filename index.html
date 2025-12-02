@@ -313,21 +313,6 @@
             color: #dc3545;
         }
         
-        /* 语音活动检测状态指示器特效 */
-
-        
-        @keyframes vadPulse {
-            0% {
-                transform: scale(1);
-            }
-            50% {
-                transform: scale(1.02);
-            }
-            100% {
-                transform: scale(1);
-            }
-        }
-        
         /* 移动端响应式优化 */
         @media (max-width: 768px) {
             body {
@@ -537,10 +522,6 @@
         </div>
         <div class="chat-messages" id="messages"></div>
     </div>
-
-    <!-- ONNX Runtime Web 和 VAD Web 库 -->
-    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.27/dist/bundle.min.js"></script>
     
     <!-- 颜色插值函数 -->
     <script type="module">
@@ -550,14 +531,13 @@
     
     <script>
         let ws = null;
-        let mediaRecorder = null;
-        let isRecording = false;
+        let recorder = null;
+        let player = null;
         let reconnectAttempts = 0;
         const MAX_RECONNECT_ATTEMPTS = 5;
         const RECONNECT_DELAY = 3000;
         let currentLanguage = 'zh';  // 当前语言：'zh' 或 'en'
         let currentTtsEngine = null;  // 获取当前TTS引擎值（带缓存优化）
-        let isWaitingForResponse = false; // 是否正在等待AI回复
       
         // 初始化
         function init() {
@@ -570,114 +550,6 @@
             setupCustomLanguageSelector(currentLanguage);
             setupCustomTtsSelector();
         }        
-        // 页面加载时初始化VAD
-        window.onload = function() {
-            console.log('页面加载完成，开始初始化VAD...');
-            initVAD();
-            startVAD();
-        };
- // 初始化VAD
-        function initVAD() {
-            console.log('检查window.vad对象...');
-            
-            // 检查VAD库是否已加载
-            if (window.vad && window.vad.MicVAD) {
-                console.log('✅ VAD库已加载完成');
-            } else {
-                console.log('⏳ VAD库还在加载中...');                
-                // 等待一段时间后重试
-                setTimeout(initVAD, 500);
-            }
-        }
-         // 开始VAD监听
-        async function startVAD() {
-            if (!window.vad || !window.vad.MicVAD) {
-                showError('VAD库还未加载完成，请稍后再试');
-                return;
-            }
-
-            try {
-                console.log('开始创建VAD实例...');
-
-                // 创建VAD实例 - 根据官方文档，不需要显式传递stream
-                vadInstance = await window.vad.MicVAD.new({
-                    model: "v5",
-                    positiveSpeechThreshold: 0.4,
-                    negativeSpeechThreshold: 0.4,
-                    minSpeechFrames: 15,
-                    preSpeechPadFrames: 30,
-                    onSpeechStart: () => {
-                        console.log('🎤 检测到语音开始');
-                        isRecording = true;
-                    },
-                    onFrameProcessed: (probs, frame) => {
-                        const indicatorColor = interpolateInferno(probs.isSpeech / 2);
-                        document.body.style.setProperty("--indicator-color", indicatorColor);
-                        
-                        // 更新status的视觉效果
-                        const status = document.getElementById('status');
-                        if (status) {
-                            // 根据语音概率动态调整视觉效果
-                            const speechProbability = probs.isSpeech;
-                            
-                            // 当检测到语音时添加活动状态
-                            if (speechProbability > 0.3) {
-                                status.classList.add('vad-active');
-                                // 动态调整背景渐变强度
-                                status.style.background = `radial-gradient(circle at center, ${indicatorColor} ${speechProbability * 50}%, #f8f9fa 100%)`;
-                            } else {
-                                status.classList.remove('vad-active');
-                                // 恢复默认渐变
-                                status.style.background = `radial-gradient(circle at center, var(--indicator-color, #f8f9fa) 0%, #f8f9fa 100%)`;
-                            }
-                        }
-                    },
-                    onSpeechEnd: (audioData) => {
-                        console.log('⏹️ 检测到语音结束');
-                        isRecording = false;
-                        
-                        // 处理录制的音频数据
-                        if (audioData && audioData.length > 0) {
-                            // 直接使用VAD工具函数处理音频数据
-                            const wavBuffer = vad.utils.encodeWAV(audioData);
-                            const base64 = vad.utils.arrayBufferToBase64(wavBuffer);
-                            // 使用统一的音频消息发送函数
-                            const success = sendAudioMessageData(base64);
-                        } else {
-                            console.warn('VAD没有提供音频数据');
-                        }
-                    },
-                    onnxWASMBasePath: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/",
-                    baseAssetPath: "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.27/dist/"
-                });
-
-                vadInstance.start();
-                console.log('VAD监听已启动');
-                
-            } catch (error) {
-                console.error('启动VAD失败:', error);
-                showError('启动语音检测失败: ' + error.message);
-            }
-        }
-
-        // 停止VAD监听
-        function stopVAD() {
-            if (vadInstance) {
-                vadInstance.pause();
-                vadInstance = null;
-            }
-
-            isRecording = false;
-            
-            // 清除VAD动画效果，恢复默认状态
-            const status = document.getElementById('status');
-            if (status) {
-                status.classList.remove('vad-active');
-                status.style.background = ''; // 清除动态背景
-            }
-            
-            console.log('VAD监听已停止');
-        }
 
         
         // 切换语言
@@ -731,27 +603,23 @@
             ws.onopen = () => {
                 updateStatus('status', '已连接', true);
                 reconnectAttempts = 0;
+                recorder = new WebRecorder(ws);
+                player = new AudioPlayer(updateStatus, ws);
                 console.log('WS连接成功');
             };
         
             ws.onmessage = async (event) => {
                 const data = JSON.parse(event.data);// 现在使用共享的messages
                 console.log('WS消息接收:', data);
-                if (data.type === 'error'||data.status === 'end') {
-                    updateStatus('status', '已连接', true);
-                    isWaitingForResponse = false;
-                    const sendBtn = document.querySelector('.btn-primary');
-                    if (sendBtn) {
-                        sendBtn.disabled = false;
+                if (typeof data === 'string') {
+                    if (data.type === 'error') {
+                        handleErrorMessage(data);
+                    }else if (data.type === 'text') {
+                        handleTextMessage(data);
                     }
-                }
-                // 根据后端ResponseHandler的消息格式处理
-                if (data.type === 'error') {
-                    // 处理错误消息
-                    handleErrorMessage(data);
                 }else{
-                    handleTextMessage(data);
-                    handleAudioMessage(data);
+                    const audioData = event.data; // ArrayBuffer
+                    player.playAudio(audioData);
                 }
                 
             };
@@ -788,79 +656,216 @@
             }
         }
         
-        // 封装WebSocket发送消息函数
-        function sendWebSocketMessage(messageData, options = {}) {
-            // 检查是否正在等待回复
-            if (isWaitingForResponse) {
-                showError('请等待当前回复完成后再发送新消息');
-                return false;
+        class WebRecorder {
+            constructor(ws) {
+                this.ws = ws;
+                this.audioContext = null;
+                this.processor = null;
+                this.source = null;
+                this.stream = null;
+                this.isRecording = false;
+                this.log = document.getElementById('logContainer');
+
+                // 配置参数
+                this.inputSampleRate = 48000;  // 大多数浏览器默认采样率
+                this.outputSampleRate = 16000; // 你需要的采样率
             }
 
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                // 发送消息到后端
-                ws.send(JSON.stringify(messageData));
-                console.log('WS消息发送:', messageData);
-                
-                // 执行可选的回调函数
-                if (options.onSuccess) {
-                    options.onSuccess();
+            // 采样率转换（降采样）
+            downsampleBuffer(buffer, inputSampleRate, outputSampleRate) {
+                if (outputSampleRate === inputSampleRate) {
+                    return buffer;
                 }
-                
-                // 设置等待状态
-                isWaitingForResponse = true;
-                // 禁用发送按钮
-                const sendBtn = document.querySelector('.btn-primary');
-                sendBtn.disabled = true;
-                
-                return true;
-            } else {
-                console.error('WebSocket连接未就绪，无法发送消息');
-                showError('连接未就绪，请检查连接状态');
-                return false;
+                const sampleRateRatio = inputSampleRate / outputSampleRate;
+                const newLength = Math.round(buffer.length / sampleRateRatio);
+                const result = new Float32Array(newLength);
+                let offsetResult = 0;
+                let offsetBuffer = 0;
+                while (offsetResult < result.length) {
+                    const nextOffsetBuffer = Math.round((offsetResult + 1) * sampleRateRatio);
+                    // 对应多个输入样本的平均值
+                    let accum = 0, count = 0;
+                    for (let i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {
+                        accum += buffer[i];
+                        count++;
+                    }
+                    result[offsetResult] = accum / count;
+                    offsetResult++;
+                    offsetBuffer = nextOffsetBuffer;
+                }
+                return result;
+            }
+
+            // float32 转 int16
+            floatTo16BitPCM(input) {
+                const output = new Int16Array(input.length);
+                for (let i = 0; i < input.length; i++) {
+                    let s = Math.max(-1, Math.min(1, input[i]));
+                    output[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                }
+                return output;
+            }
+
+            async start() {
+                try {
+                    this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+                    // 连接麦克风流
+                    this.source = this.audioContext.createMediaStreamSource(this.stream);
+
+                    // 处理节点，bufferSize 可以是 256、512、1024、2048、4096、8192、16384
+                    const bufferSize = 4096;
+                    this.processor = this.audioContext.createScriptProcessor(bufferSize, 1, 1);
+
+                    this.processor.onaudioprocess = (e) => {
+                        if (!this.isRecording) return;
+
+                        let inputData = e.inputBuffer.getChannelData(0); // Float32Array
+
+                        // 先降采样到16kHz
+                        let downsampledBuffer = this.downsampleBuffer(inputData, this.audioContext.sampleRate, this.outputSampleRate);
+
+                        // 转16bit PCM
+                        let int16Buffer = this.floatTo16BitPCM(downsampledBuffer);
+
+                        // 发送二进制数据
+                        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                            this.ws.send(int16Buffer.buffer);
+                        }
+                    };
+
+                    // 连接处理节点到输出（避免垃圾收集）
+                    this.source.connect(this.processor);
+                    this.processor.connect(this.audioContext.destination);
+
+                    this.isRecording = true;
+                    return true;
+                } catch (error) {
+                    return false;
+                }
+            }
+
+            stop() {
+                if (!this.isRecording) return;
+
+                this.isRecording = false;
+
+                if (this.processor) {
+                    this.processor.disconnect();
+                    this.processor = null;
+                }
+                if (this.source) {
+                    this.source.disconnect();
+                    this.source = null;
+                }
+                if (this.audioContext) {
+                    this.audioContext.close();
+                    this.audioContext = null;
+                }
+                if (this.stream) {
+                    this.stream.getTracks().forEach(track => track.stop());
+                    this.stream = null;
+                }
             }
         }
 
-        
-       
-      
-        
-        // 统一的音频消息发送函数
-        function sendAudioMessageData(base64Audio) {
-            const messageId = 'msg_' + Date.now();
-            // 准备音频消息数据
-            const messageData = {
-                type: 'audio',
-                audio_data: base64Audio,
-                message_id: messageId,
-                language: currentLanguage,
-                tts_engine: getCurrentTtsEngine()
-            };
-            
-            // 使用封装的发送函数
-            const success = sendWebSocketMessage(messageData, {
-                onSuccess: () => {
-                    // 添加语音消息
-                    addVoiceMessage('user', messageId, base64Audio);
+        class AudioPlayer {
+            constructor(updateStatus, websocket) {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                this.audioQueue = [];
+                this.isPlaying = false;
+                this.shouldInterrupt = false;
+                this.updateStatus = updateStatus;
+                this.websocket = websocket
+            }
+
+             sendPlaybackStatus(status, queueSize) {
+                if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+                    const message = {
+                        type: "playback_status",
+                        status: status, // e.g., 'playing', 'interrupted' , 'completed'
+                        queue_size: queueSize,
+                        timestamp: new Date().toISOString()
+                    };
+                    this.websocket.send(JSON.stringify(message));
                 }
-            });
-            
-            return success;
-        }
-        
-        // 发送音频消息（处理Blob格式）
-        async function sendAudioMessage(audioBlob) {
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const base64Audio = reader.result.split(',')[1];
-                    const success = sendAudioMessageData(base64Audio);
-                    resolve(success);
+            }
+
+            async playAudio(audioData) {
+                try {
+                    const audioBuffer = await this.audioContext.decodeAudioData(audioData);
+                    this.audioQueue.push(audioBuffer);
+                    console.log(`收到音频, 队列大小: ${this.audioQueue.length}`);
+                    if (!this.isPlaying) {
+                        this.playNext();
+                    }
+                } catch (error) {
+                    console.error(`播放错误: ${error}`);
+                }
+            }
+
+            playNext() {
+                if (this.audioQueue.length === 0) {
+                    this.isPlaying = false;
+                    return;
+                }
+
+                this.isPlaying = true;
+                const audioBuffer = this.audioQueue.shift();
+                const source = this.audioContext.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(this.audioContext.destination);
+                this.source = source;  // <== 添加这句
+
+
+                const duration = audioBuffer.duration.toFixed(1);
+                console.log(`开始播放 (时长: ${duration}秒)`);
+                this.updateStatus(`status`,`播放中 (剩余: ${this.audioQueue.length + 1}段)`, true);
+                this.sendPlaybackStatus('playing', this.audioQueue.length);
+                source.onended = () => {
+                    console.log("播放完成");
+                    if (this.shouldInterrupt){
+                        this.sendPlaybackStatus('interrupted', this.audioQueue.length);
+                    } else {
+                        this.sendPlaybackStatus('completed', this.audioQueue.length);
+                    }
+                    if (this.audioQueue.length > 0) {
+                        this.playNext();
+                    } else {
+                        this.isPlaying = false;
+                        this.shouldInterrupt = false;
+
+                        if (this.audioQueue.length === 0) {
+                            this.updateStatus(`status`,"就绪",true);
+                        }
+                    }
                 };
-                reader.readAsDataURL(audioBlob);
-            });
+
+                source.start();
+            }
+
+            stopCurrent() {
+                if (this.source) {
+                    try {
+                        this.source.stop();
+                    } catch (e) {
+                        console.error(`停止当前音频错误: ${e}`);
+                    }
+                    this.source = null;
+                }
+                this.isPlaying = false;
+            }
+
+            interrupt() {
+                this.shouldInterrupt = true;
+                this.audioQueue = [];
+                this.stopCurrent();  // <== 添加这一句
+                console.log("收到打断指令，清空播放队列并停止当前音频");
+                this.updateStatus(`status`,"已打断",true);
+            }
         }
     
-        
         // 统一的消息流式更新函数 - 优化支持后端status字段
         let currentStreamMessages = {};
         
@@ -1091,24 +1096,6 @@
             showError(errorMessage);
         }
         
-        // 更新录音按钮
-        function updateRecordButton(isRecording) {
-            const btn = document.getElementById('recordBtn');
-            if (isRecording) {
-                btn.innerHTML = currentLanguage === 'zh' ? 
-                    '<i class="fas fa-stop"></i> 停止' : 
-                    '<i class="fas fa-stop"></i> Stop';
-                btn.classList.add('recording');
-                btn.setAttribute('aria-label', currentLanguage === 'zh' ? '停止' : 'Stop');
-            } else {
-                btn.innerHTML = currentLanguage === 'zh' ? 
-                    '<i class="fas fa-microphone"></i> 录音' : 
-                    '<i class="fas fa-microphone"></i> Record';
-                btn.classList.remove('recording');
-                btn.setAttribute('aria-label', currentLanguage === 'zh' ? '录音' : 'Record');
-            }
-        }
-        
         // 显示错误消息
         function showError(message) {
             // 创建优雅的错误提示
@@ -1249,7 +1236,6 @@
                 console.log('关闭WebSocket连接');
                 ws.close();
             }
-            stopVAD();
             console.log('资源清理完成');
         });
     </script>
