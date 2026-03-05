@@ -1,0 +1,3014 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实时语音</title>
+    <!-- 添加Font Awesome图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 95%;
+            max-width: 1000px;
+            padding: 30px;
+            margin: 20px;
+        }
+
+        .control-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .control-panel-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #333;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: relative;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+
+        .control-panel-title::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        .control-panel:hover .control-panel-title::after {
+            width: 100%;
+        }
+
+        .control-panel-buttons {
+            display: flex;
+            gap: 0px;
+        }
+        
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn i {
+            font-size: 18px;
+        }
+
+        /* 图标按钮样式 */
+        .icon-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            padding: 0;
+            min-width: auto;
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .icon-btn i {
+            font-size: 24px;
+            color: #667eea;
+            transition: all 0.3s ease;
+        }
+
+        .icon-btn:hover i {
+            color: #5a6fd8;
+            transform: scale(1.1);
+        }
+
+        .icon-btn.active i {
+            color: #28a745;
+        }
+
+        .icon-btn:disabled i {
+            color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .tts-select {
+            height: 36px;
+            padding: 0 12px;
+            border-radius: 18px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            font-size: 14px;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .tts-select:hover {
+            border-color: #5a6fd8;
+            background: #f8f9fa;
+        }
+
+        .tts-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .tts-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tts-option:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .tts-option.selected {
+            border-color: #667eea;
+            background: #e8eaff;
+        }
+
+        .tts-option i {
+            font-size: 24px;
+            color: #667eea;
+        }
+
+        .tts-option span {
+            font-size: 16px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+
+
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            opacity: 0.6;
+        }
+
+        .conversation-panel {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            height: 400px;
+            display: flex;
+            gap: 20px;
+            min-height: 400px;
+            overflow: hidden;
+        }
+
+        .live2d-panel {
+            flex: 0 0 240px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .messages-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            height: 360px;
+            padding-right: 5px;
+            min-height: 360px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 16px;
+            border-radius: 15px;
+            max-width: 85%;
+            word-wrap: break-word;
+            position: relative;
+            animation: fadeInUp 0.3s ease-out;
+        }
+
+        .delete-message-btn {
+            position: absolute;
+            top: 5px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            color: #999;
+            font-size: 14px;
+        }
+
+        .user-message .delete-message-btn {
+            right: -30px;
+        }
+
+        .assistant-message .delete-message-btn,
+        .system-message .delete-message-btn,
+        .error-message .delete-message-btn {
+            left: -30px;
+        }
+
+        .message:hover .delete-message-btn {
+            opacity: 1;
+        }
+
+        .delete-message-btn:hover {
+            color: #dc3545;
+        }
+
+        .user-message {
+            background: #667eea;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .assistant-message {
+            background: white;
+            color: #333;
+            margin-right: auto;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 打字机效果光标 */
+        .typing-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1.2em;
+            background-color: #667eea;
+            margin-left: 2px;
+            vertical-align: text-bottom;
+            animation: cursorBlink 1s infinite;
+        }
+
+        @keyframes cursorBlink {
+            0%, 50% {
+                opacity: 1;
+            }
+            51%, 100% {
+                opacity: 0;
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 滚动条样式 - 隐藏滚动条 */
+        .messages-container::-webkit-scrollbar {
+            width: 0;
+            display: none;
+        }
+
+        .messages-container {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* 系统消息和错误消息样式 */
+        .system-message {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+            margin: 10px auto;
+            text-align: center;
+            max-width: 70%;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            margin: 10px auto;
+            text-align: center;
+            max-width: 70%;
+        }
+
+        .connection-status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        /* 声纹录制弹框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px 15px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .close {
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .close:hover {
+            transform: scale(1.2);
+            color: #ff6b6b;
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        /* Live2D模型列表样式 */
+        .upload-area {
+            margin-bottom: 30px;
+        }
+
+        .upload-dropzone {
+            border: 2px dashed #dee2e6;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: #f8f9fa;
+        }
+
+        .upload-dropzone:hover {
+            border-color: #2196f3;
+            background-color: #e3f2fd;
+        }
+
+        .upload-dropzone i {
+            font-size: 48px;
+            color: #6c757d;
+            margin-bottom: 15px;
+        }
+
+        .upload-dropzone p {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #495057;
+        }
+
+        .upload-dropzone small {
+            color: #6c757d;
+        }
+
+        .model-list-container h4 {
+            margin-bottom: 15px;
+            color: #495057;
+            font-weight: 600;
+        }
+
+        .model-list {
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+        }
+
+        .model-list:empty,
+        .model-list:has(.no-models) {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .no-models {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: #6c757d;
+            padding: 20px;
+        }
+
+        .model-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid #e9ecef;
+            background-color: white;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .model-item:last-child {
+            border-bottom: none;
+        }
+
+        .model-item:hover {
+            background-color: #e9ecef;
+        }
+
+        .model-item.selected {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+            transform: translateX(2px);
+            transition: all 0.2s ease;
+        }
+        
+        .model-item.selected .model-name {
+            color: #1976d2;
+            font-weight: 600;
+        }
+        
+        .model-item.selected .fa-cube {
+            color: #1976d2 !important;
+        }
+
+        .model-item .model-name {
+            font-weight: 500;
+            flex: 1;
+            color: #495057;
+        }
+
+        .model-item .model-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .model-item .model-action-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 4px;
+            transition: background-color 0.2s ease;
+            color: #6c757d;
+        }
+
+        .model-item .model-action-btn:hover {
+            background-color: rgba(0,0,0,0.1);
+            color: #495057;
+        }
+
+        /* 删除模型按钮样式 */
+        .delete-model-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 6px 8px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            color: #6c757d;
+            font-size: 12px;
+        }
+
+        .delete-model-btn:hover {
+            background-color: #dc3545;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .audio-visualizer {
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        #visualizerCanvas {
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            background: #f8f9fa;
+        }
+
+        .recording-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .recording-controls .btn {
+            min-width: 120px;
+            padding: 10px 15px;
+            font-size: 14px;
+        }
+
+
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideIn {
+            from { 
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* 录音状态指示器 */
+        .recording .pulse {
+            background: #dc3545;
+            animation: pulse 0.5s infinite;
+        }
+
+        /* 当前声纹文件信息样式 */
+        .voiceprint-files-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .voiceprint-file-info {
+            flex: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .voiceprint-file-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 6px;
+            font-size: 16px;
+        }
+
+        .voiceprint-file-details {
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .voiceprint-file-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .voiceprint-action-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            font-size: 16px;
+        }
+
+        .voiceprint-play-btn {
+            background: #28a745;
+            color: white;
+        }
+
+        .voiceprint-play-btn:hover {
+            background: #218838;
+            transform: scale(1.1);
+        }
+
+        .voiceprint-delete-btn {
+            background: #dc3545;
+            color: white;
+        }
+
+        .voiceprint-delete-btn:hover {
+            background: #c82333;
+            transform: scale(1.1);
+        }
+
+        .no-voiceprint-files {
+            text-align: center;
+            padding: 12px;
+            color: #6c757d;
+            font-style: italic;
+            font-size: 16px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-text {
+            display: block;
+            margin-top: 4px;
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="control-panel">
+            <h2 class="control-panel-title">实时语音</h2>
+            <div class="control-panel-buttons">
+                <button class="icon-btn" id="ttsSelectBtn" onclick="openTTSSelectModal()">
+                    <i class="fas fa-robot"></i>
+                </button>
+                <button class="icon-btn" id="recordBtn" onclick="toggleRecording()">
+                    <i class="fas fa-microphone" id="recordIcon"></i>
+                </button>
+                <button class="icon-btn" id="clearBtn" onclick="clearConversation()">
+                    <i class="fas fa-trash"></i>
+                </button>
+                <button class="icon-btn" id="keywordWakeupBtn" onclick="toggleKeywordWakeup()">
+                    <i class="fas fa-bell"></i>
+                </button>
+                <button class="icon-btn" id="voiceprintMatchBtn" onclick="openVoiceprintModal()">
+                    <i class="fas fa-fingerprint"></i>
+                </button>
+                <button class="icon-btn" id="live2dModelBtn" onclick="openLive2DModelModal()">
+                    <i class="fas fa-cube"></i>
+                </button>
+                <button class="icon-btn" id="voiceTestBtn" onclick="sendVoiceTest()">
+                    <i class="fas fa-play"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="connection-status disconnected" id="connectionStatus">
+            未连接服务器
+        </div>
+
+        <div class="conversation-panel" id="conversationPanel">
+            <div class="live2d-panel">
+                <!-- PixiJS画布 -->
+                <canvas id="canvas"></canvas>
+            </div>
+            <div class="messages-container" id="messagesContainer">
+            </div>
+        </div>
+    </div>
+
+    <!-- 声纹录制弹框 -->
+    <div id="voiceprintModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>声纹录制</h3>
+                <span class="close" onclick="closeVoiceprintModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="recording-controls">
+                    <button class="btn btn-primary" id="toggleRecordBtn" onclick="toggleVoiceprintRecording()">
+                        <i class="fas fa-microphone"></i> 开始录制
+                    </button>
+                </div>
+                <div class="audio-visualizer" id="audioVisualizer">
+                    <canvas id="visualizerCanvas" width="400" height="100"></canvas>
+                </div>
+                <!-- 当前声纹文件信息 -->
+                <div class="voiceprint-files-section" id="voiceprintFilesSection">
+                        
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live2D模型选择弹框 -->
+    <div id="live2dModelModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Live2D模型管理</h3>
+                <span class="close" onclick="closeLive2DModelModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="upload-area">
+                    <input type="file" id="live2dModelFile" accept=".zip,.rar,.7z" style="display: none;">
+                    <div class="upload-dropzone" id="live2dUploadDropzone">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>点击或拖拽压缩包到此处上传</p>
+                        <small>支持 .zip, .rar, .7z 格式的Live2D模型压缩包</small>
+                    </div>
+                </div>
+                
+                <div class="model-list-container">
+                    <h4>已上传模型</h4>
+                    <div class="model-list" id="live2dModelList">
+                        <div class="empty-state">暂无模型</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TTS选择弹框 -->
+    <div id="ttsSelectModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>选择TTS引擎</h3>
+                <span class="close" onclick="closeTTSSelectModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="tts-options">
+                    <div class="tts-option" data-value="ChatTTS" onclick="selectTTS('ChatTTS')">
+                        <i class="fas fa-robot"></i>
+                        <span>ChatTTS</span>
+                    </div>
+                    <div class="tts-option" data-value="EdgeTTS" onclick="selectTTS('EdgeTTS')">
+                        <i class="fas fa-microphone-alt"></i>
+                        <span>EdgeTTS</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 关键词唤醒设置弹框 -->
+    <div id="keywordWakeupModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>关键词唤醒设置</h3>
+                <span class="close" onclick="closeKeywordWakeupModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="wakeupKeyword" class="form-control" placeholder="请输入唤醒关键词，如：你好小助手" maxlength="20">
+                <small class="form-text">建议使用2-6个汉字或4-12个英文字符作为唤醒词，为空就不设置</small>
+                <div class="modal-actions">
+                    <button class="btn btn-primary" onclick="saveKeywordWakeup()">保存设置</button>
+                    <button class="btn btn-secondary" onclick="closeKeywordWakeupModal()">取消</button>
+                </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入必要的库 -->
+    <!-- Cubism 4.0 核心库 -->
+    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <!-- Cubism 2.1 核心库 -->
+    <script src="https://cdn.jsdelivr.net/gh/dylanNew/live2d/webgl/Live2D/lib/live2d.min.js"></script>
+    <!-- PixiJS 6.5.2 -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.2/dist/browser/pixi.min.js"></script>
+    <!-- pixi-live2d-display 主库 -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/index.min.js"></script>
+    <!-- pixi-live2d-display 扩展功能 -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/extra.min.js"></script>
+    <script>
+        const live2d = PIXI.live2d;
+
+        let app, currentModel, currentModelName;
+        
+        // 主函数
+        (async function main() {
+            // 创建PixiJS应用
+                app = new PIXI.Application({
+                view: document.getElementById("canvas"),  // 指定canvas元素
+                autoStart: true,                          // 自动开始渲染循环
+                resizeTo: document.querySelector('.live2d-panel'), // 画布大小随父容器变化
+                backgroundColor: 0x667eea                 // 背景色（主题色）
+            });
+        })();
+        // 全局变量
+        let websocket = null;
+        let isRecording = false;
+        let isConnected = false;
+        let isSendingAudio = false; // 防止重复发送音频
+        let audioContext = null;
+        let source = null;
+        let processor = null;
+        let audioBuffer = [];
+        let bufferDuration = 0.064; // 累积64ms音频再发送（优化实时性）
+        let samplesPerBuffer = 16000 * bufferDuration; // 16kHz下64ms的采样点数（1024）
+        
+        // 流式回复状态管理
+        let currentStreamingMessage = null; // 当前正在流式更新的消息元素
+        let streamingText = ''; // 流式累积的文本
+        let isStreaming = false; // 是否正在流式接收中
+        
+        // TTS音频队列管理
+        let audioQueue = []; // 音频播放队列
+        let isPlayingAudio = false; // 是否正在播放音频
+        
+        // 打字机效果相关变量
+        let typingInterval = null; // 打字定时器
+        let displayedText = ''; // 已经显示的文本
+        let pendingText = ''; // 待显示的文本
+        let currentAudioContext = null; // 当前音频上下文
+        // 采样率转换（降采样）
+        function downsampleBuffer(buffer, inputSampleRate, outputSampleRate) {
+            if (outputSampleRate === inputSampleRate) {
+                return buffer;
+            }
+            const sampleRateRatio = inputSampleRate / outputSampleRate;
+            const newLength = Math.round(buffer.length / sampleRateRatio);
+            const result = new Float32Array(newLength);
+            let offsetResult = 0;
+            let offsetBuffer = 0;
+            while (offsetResult < result.length) {
+                const nextOffsetBuffer = Math.round((offsetResult + 1) * sampleRateRatio);
+                // 对应多个输入样本的平均值
+                let accum = 0, count = 0;
+                for (let i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {
+                    accum += buffer[i];
+                    count++;
+                }
+                result[offsetResult] = accum / count;
+                offsetResult++;
+                offsetBuffer = nextOffsetBuffer;
+            }
+            return result;
+        }
+
+        // float32 转 int16
+        function floatTo16BitPCM(input) {
+            const output = new Int16Array(input.length);
+            for (let i = 0; i < input.length; i++) {
+                let s = Math.max(-1, Math.min(1, input[i]));
+                output[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+            return output;
+        }
+
+        // 连接WebSocket
+        function connectWebSocket() {
+            if (isConnected) {
+                disconnectWebSocket();
+                return;
+            }
+
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            console.log('尝试连接WebSocket:', wsUrl);
+            websocket = new WebSocket(wsUrl);
+
+            websocket.onopen = function() {
+            isConnected = true;
+            updateConnectionStatus(true);
+            console.log('WebSocket连接成功');
+            
+            // 自动开始录音
+            setTimeout(() => {
+                if (!isRecording) {
+                    startRecording();
+                }
+            }, 500);
+        };
+
+            websocket.onmessage = function(event) {
+                console.log('收到WebSocket消息原始内容:', event.data);
+                const data = JSON.parse(event.data);
+                handleServerMessage(data);
+            };
+
+            websocket.onclose = function() {
+                console.log('WebSocket连接关闭');
+                isConnected = false;
+                updateConnectionStatus(false);
+                updateButtonStates();
+                console.log('WebSocket连接关闭');
+            };
+
+            websocket.onerror = function(error) {
+                console.error('WebSocket错误:', error);
+                alert('连接服务器失败，请检查服务器是否运行');
+            };
+        }
+
+        // 断开WebSocket连接
+        function disconnectWebSocket() {
+            if (websocket) {
+                websocket.close();
+                websocket = null;
+            }
+            if (isRecording) {
+                stopRecording();
+            }
+        }
+
+        // 处理服务器消息
+        function handleServerMessage(data) {            
+            // 调试：检查消息容器是否存在
+            const messagesContainer = document.getElementById('messagesContainer');
+            if (!messagesContainer) {
+                console.error('错误：找不到 messagesContainer 元素');
+                return;
+            }
+            
+            // 根据消息类型处理
+            if (data.type === 'llm_stream_start') {
+                console.log('处理 llm_stream_start 消息');
+                
+                // 用户语音识别结果作为用户消息显示
+                if (data.text) {
+                    console.log('添加用户消息:', data.text);
+                    addMessage(data.text, 'user');
+                } else {
+                    console.log('没有识别到的文本');
+                }
+                
+                // 流式回复开始
+                isStreaming = true;
+                streamingText = '';
+                currentStreamingMessage = createStreamingMessage();
+                // 触发Live2D动画
+                triggerLive2DAnimation('think');
+            } else if (data.type === 'llm_chunk') {
+                // 流式回复片段 - 实现打字机效果
+                if (data.chunk) {
+                    streamingText += data.chunk;
+                    if (currentStreamingMessage) {
+                        updateStreamingMessage(streamingText);
+                    }
+                    // 触发Live2D动画
+                    triggerLive2DAnimation('speak');
+                }
+            } else if (data.type === 'llm_stream_end') {
+                // 流式回复结束
+                isStreaming = false;
+                if (currentStreamingMessage) {
+                    finalizeStreamingMessage(streamingText, data.timestamp);
+                    currentStreamingMessage = null;
+                }
+                streamingText = '';
+                // 触发Live2D动画
+                triggerLive2DAnimation('idle');
+            } else if (data.type === 'assistant_reply') {
+                // AI助手完整回复（非流式）
+                addMessage(data.text, 'assistant', data.timestamp);
+                // 触发Live2D动画
+                triggerLive2DAnimation('speak');
+            } else if (data.type === 'user_speech') {
+                // 用户语音识别结果
+                addMessage(data.text, 'user', data.timestamp);
+                // 触发Live2D动画
+                triggerLive2DAnimation('listen');
+            } else if (data.type === 'wakeup_detected') {
+                // 唤醒词检测
+                addMessage('唤醒词检测成功！', 'system', data.timestamp);
+                triggerLive2DAnimation('wakeup');
+            } else if (data.type === 'error' || data.type === 'llm_error') {
+                // 错误消息
+                if (isStreaming && currentStreamingMessage) {
+                    currentStreamingMessage.remove();
+                    currentStreamingMessage = null;
+                    isStreaming = false;
+                    streamingText = '';
+                }
+                addMessage('错误：' + (data.message || data.text), 'error', data.timestamp);
+                triggerLive2DAnimation('sad');
+            } else if (data.type === 'llm_unavailable') {
+                // LLM不可用
+                if (isStreaming && currentStreamingMessage) {
+                    currentStreamingMessage.remove();
+                    currentStreamingMessage = null;
+                    isStreaming = false;
+                    streamingText = '';
+                }
+                addMessage(data.message || 'LLM服务暂不可用', 'system', data.timestamp);
+                triggerLive2DAnimation('sad');
+            } else if (data.type === 'tts_audio') {
+                // TTS音频消息，添加到播放队列
+                console.log('收到TTS音频，准备添加到队列');
+                if (data.audio) {
+                    addToAudioQueue({
+                        audio: data.audio,
+                        text: data.text || data.message || '',
+                        timestamp: data.timestamp
+                    });
+                }
+            }
+        }
+
+        // 添加音频到播放队列
+        function addToAudioQueue(audioItem) {
+            audioQueue.push(audioItem);
+            console.log(`音频添加到队列，当前队列长度: ${audioQueue.length}`);
+            
+            // 如果没有正在播放，立即开始播放
+            if (!isPlayingAudio && audioQueue.length > 0) {
+                playNextAudio();
+            }
+        }
+
+        // 播放队列中的下一个音频
+        async function playNextAudio() {
+            if (audioQueue.length === 0) {
+                isPlayingAudio = false;
+                triggerLive2DAnimation('idle');
+                return;
+            }
+            
+            isPlayingAudio = true;
+            const audioItem = audioQueue.shift();
+            
+            console.log('开始播放音频队列中的音频');
+            triggerLive2DAnimation('speak');
+            
+            try {
+                const audioBytes = base64ToArrayBuffer(audioItem.audio);
+                
+                if (!currentAudioContext) {
+                    currentAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                
+                const audioBuffer = await currentAudioContext.decodeAudioData(audioBytes);
+                
+                const source = currentAudioContext.createBufferSource();
+                source.buffer = audioBuffer;
+                
+                startLipSync(source, currentAudioContext);
+                
+                source.connect(currentAudioContext.destination);
+                
+                source.onended = () => {
+                    stopLipSync();
+                    console.log('当前音频播放完成，继续播放队列');
+                    playNextAudio();
+                };
+                
+                source.start(0);
+                
+            } catch (error) {
+                console.error('音频播放错误:', error);
+                // 播放出错，继续播放下一个
+                playNextAudio();
+            }
+        }
+
+        // Base64转ArrayBuffer
+        function base64ToArrayBuffer(base64) {
+            const binaryString = window.atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        // 创建流式消息元素
+        function createStreamingMessage() {
+            const messagesContainer = document.getElementById('messagesContainer');
+            if (!messagesContainer) return null;
+            
+            // 重置打字机状态
+            displayedText = '';
+            pendingText = '';
+            if (typingInterval) {
+                clearInterval(typingInterval);
+                typingInterval = null;
+            }
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message assistant-message streaming';
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    <span class="streaming-text"></span><span class="typing-cursor"></span>
+                </div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            return messageDiv;
+        }
+
+        // 清理文本中的格式标签
+        function cleanText(text) {
+            if (!text) return '';
+            // 移除 <|xxx|> 格式的标签
+            return text.replace(/<\|[^|]+\|>/g, '').trim();
+        }
+
+        // 更新流式消息内容
+        function updateStreamingMessage(text) {
+            if (!currentStreamingMessage) return;
+            
+            text = cleanText(text);
+            
+            // 找出新增的文本
+            const newText = text.substring(displayedText.length);
+            
+            if (newText.length > 0) {
+                // 添加到待显示队列
+                pendingText += newText;
+                
+                // 如果没有正在进行的打字，开始打字
+                if (!typingInterval) {
+                    startTypingEffect();
+                }
+            }
+            
+            // 滚动到底部
+            const messagesContainer = document.getElementById('messagesContainer');
+            if (messagesContainer) {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+        }
+        
+        // 打字机效果
+        function startTypingEffect() {
+            typingInterval = setInterval(() => {
+                if (pendingText.length > 0 && currentStreamingMessage) {
+                    // 取出一个字符
+                    const char = pendingText.charAt(0);
+                    pendingText = pendingText.substring(1);
+                    displayedText += char;
+                    
+                    const textSpan = currentStreamingMessage.querySelector('.streaming-text');
+                    if (textSpan) {
+                        textSpan.textContent = displayedText;
+                    }
+                    
+                    // 滚动到底部
+                    const messagesContainer = document.getElementById('messagesContainer');
+                    if (messagesContainer) {
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    }
+                } else {
+                    // 待显示文本为空，停止打字定时器
+                    clearInterval(typingInterval);
+                    typingInterval = null;
+                }
+            }, 30); // 每30毫秒打一个字，约每秒33个字
+        }
+
+        // 完成流式消息
+        function finalizeStreamingMessage(text, timestamp = null) {
+            if (!currentStreamingMessage) return;
+            
+            // 清理文本中的格式标签
+            text = cleanText(text);
+            
+            // 停止打字定时器
+            if (typingInterval) {
+                clearInterval(typingInterval);
+                typingInterval = null;
+            }
+            
+            // 显示所有剩余文本
+            displayedText = text;
+            pendingText = '';
+            
+            const textSpan = currentStreamingMessage.querySelector('.streaming-text');
+            const cursor = currentStreamingMessage.querySelector('.typing-cursor');
+            
+            if (textSpan) {
+                textSpan.textContent = text;
+            }
+            
+            // 移除光标
+            if (cursor) {
+                cursor.remove();
+            }
+            
+            currentStreamingMessage.classList.remove('streaming');
+            
+            // 滚动到底部
+            const messagesContainer = document.getElementById('messagesContainer');
+            if (messagesContainer) {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+        }
+
+        // 添加消息到聊天界面
+        function addMessage(text, type, timestamp = null) {
+            // 清理文本中的格式标签
+            text = cleanText(text);
+            
+            const messagesContainer = document.getElementById('messagesContainer');
+            if (!messagesContainer) return;
+            
+            // 计算消息索引（只对user和assistant类型计数）
+            let messageIndex = -1;
+            const existingMessages = messagesContainer.querySelectorAll('.message');
+            if (type === 'user' || type === 'assistant') {
+                messageIndex = Array.from(existingMessages).filter(msg => {
+                    return msg.classList.contains('user-message') || msg.classList.contains('assistant-message');
+                }).length;
+            }
+            
+            const messageDiv = document.createElement('div');
+            const time = timestamp ? new Date(timestamp * 1000).toLocaleTimeString('zh-CN', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            }) : new Date().toLocaleTimeString('zh-CN', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            
+            let messageClass = 'message';
+            
+            switch (type) {
+                case 'user':
+                    messageClass += ' user-message';
+                    break;
+                case 'assistant':
+                    messageClass += ' assistant-message';
+                    break;
+                case 'system':
+                    messageClass += ' system-message';
+                    break;
+                case 'error':
+                    messageClass += ' error-message';
+                    break;
+            }
+            
+            messageDiv.className = messageClass;
+            messageDiv.setAttribute('data-message-type', type);
+            messageDiv.setAttribute('data-message-index', messageIndex);
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    ${text}
+                </div>
+                <button class="delete-message-btn" onclick="deleteMessage(this)" title="删除此消息">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            
+            // 滚动到底部
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // 触发Live2D动画
+        let live2dAnimationState = 'idle';
+        let lipSyncAnimationId = null;
+        let audioAnalyser = null;
+        
+        function triggerLive2DAnimation(animationType) {
+            if (!live2dModel) {
+                return;
+            }
+            
+            live2dAnimationState = animationType;
+            
+            if (animationType === 'speak') {
+                const availableMotions = ['Idle', 'Talk', 'Speak', 'default'];
+                let motionFound = false;
+                
+                for (const motion of availableMotions) {
+                    try {
+                        live2dModel.motion(motion);
+                        motionFound = true;
+                        console.log(`播放说话动画: ${motion}`);
+                        break;
+                    } catch (e) {
+                        continue;
+                    }
+                }
+                
+                if (!motionFound) {
+                    try {
+                        live2dModel.motion("Tap");
+                    } catch (e) {
+                        console.log('无可用说话动画');
+                    }
+                }
+                
+            } else if (animationType === 'idle') {
+                stopLipSync();
+                const idleMotions = ['Idle', 'default'];
+                let motionFound = false;
+                
+                for (const motion of idleMotions) {
+                    try {
+                        live2dModel.motion(motion);
+                        motionFound = true;
+                        console.log(`播放空闲动画: ${motion}`);
+                        break;
+                    } catch (e) {
+                        continue;
+                    }
+                }
+                
+            } else if (animationType === 'think') {
+                const thinkMotions = ['Think', 'default'];
+                let motionFound = false;
+                
+                for (const motion of thinkMotions) {
+                    try {
+                        live2dModel.motion(motion);
+                        motionFound = true;
+                        break;
+                    } catch (e) {
+                        continue;
+                    }
+                }
+                
+            } else if (animationType === 'listen') {
+                const listenMotions = ['Listen', 'default'];
+                let motionFound = false;
+                
+                for (const motion of listenMotions) {
+                    try {
+                        live2dModel.motion(motion);
+                        motionFound = true;
+                        break;
+                    } catch (e) {
+                        continue;
+                    }
+                }
+                
+            } else if (animationType === 'sad') {
+                const sadMotions = ['Sad', 'Cry', 'default'];
+                let motionFound = false;
+                
+                for (const motion of sadMotions) {
+                    try {
+                        live2dModel.motion(motion);
+                        motionFound = true;
+                        break;
+                    } catch (e) {
+                        continue;
+                    }
+                }
+                
+            } else if (animationType === 'happy') {
+                const happyMotions = ['Happy', 'Joy', 'default'];
+                let motionFound = false;
+                
+                for (const motion of happyMotions) {
+                    try {
+                        live2dModel.motion(motion);
+                        motionFound = true;
+                        break;
+                    } catch (e) {
+                        continue;
+                    }
+                }
+                
+            }
+        }
+        
+        function initAudioAnalyser(audioContext) {
+            if (!audioContext) {
+                return null;
+            }
+            
+            const analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.8;
+            return analyser;
+        }
+        
+        function startLipSync(audioSource, audioContext) {
+            console.log('=== startLipSync ===', { hasLive2dModel: !!live2dModel });
+            
+            if (!live2dModel) {
+                console.log('没有加载Live2D模型');
+                return;
+            }
+            
+            stopLipSync();
+            
+            audioAnalyser = audioContext.createAnalyser();
+            audioAnalyser.fftSize = 256;
+            audioAnalyser.smoothingTimeConstant = 0.5;
+            
+            audioSource.connect(audioAnalyser);
+            audioAnalyser.connect(audioContext.destination);
+            
+            const bufferLength = audioAnalyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            
+            console.log('开始口型同步循环');
+            
+            function updateLipSync() {
+                if (!audioAnalyser) return;
+                
+                audioAnalyser.getByteFrequencyData(dataArray);
+                
+                let sum = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    sum += dataArray[i];
+                }
+                let avgVolume = sum / bufferLength;
+                
+                let mouthValue = Math.min(1.0, (avgVolume / 128.0) * 2.5);
+                
+                const mouthParamNames = [
+                    'PARAM_MOUTH_OPEN_Y',
+                    'ParamMouthOpenY',
+                    'ParamMouthOpen',
+                    'ParamMouth'
+                ];
+                
+                try {
+                    const coreModel = live2dModel.internalModel.coreModel;
+                    if (coreModel && coreModel.setParameterValueById) {
+                        for (const paramName of mouthParamNames) {
+                            coreModel.setParameterValueById(paramName, mouthValue);
+                        }
+                    }
+                } catch(e) {
+                    console.log('LipSync error:', e);
+                }
+                
+                lipSyncAnimationId = requestAnimationFrame(updateLipSync);
+            }
+            
+            updateLipSync();
+        }
+        
+        function stopLipSync() {
+            if (lipSyncAnimationId) {
+                cancelAnimationFrame(lipSyncAnimationId);
+                lipSyncAnimationId = null;
+            }
+            if (audioAnalyser) {
+                try { audioAnalyser.disconnect(); } catch(e) {}
+                audioAnalyser = null;
+            }
+        }
+
+        // 清空对话
+        function clearConversation() {
+            const messagesContainer = document.getElementById('messagesContainer');
+            if (!messagesContainer) return;
+            
+            // 清空消息列表
+            messagesContainer.innerHTML = '';
+            
+            // 同步清空后端对话历史
+            if (isConnected && websocket && websocket.readyState === WebSocket.OPEN) {
+                try {
+                    websocket.send(JSON.stringify({
+                        type: 'control',
+                        command: 'clear_conversation'
+                    }));
+                } catch (e) {
+                    console.error('发送清空对话命令失败:', e);
+                }
+            }
+            
+            // 重置Live2D状态
+            triggerLive2DAnimation('idle');
+        }
+
+        // 删除单条消息
+        function deleteMessage(button) {
+            const messageDiv = button.closest('.message');
+            if (messageDiv) {
+                const messageType = messageDiv.getAttribute('data-message-type');
+                const messageIndex = parseInt(messageDiv.getAttribute('data-message-index'));
+                
+                // 如果是user或assistant类型消息，需要同步删除后端记录
+                if ((messageType === 'user' || messageType === 'assistant') && messageIndex >= 0 && isConnected && websocket && websocket.readyState === WebSocket.OPEN) {
+                    // 发送删除命令到后端
+                    try {
+                        websocket.send(JSON.stringify({
+                            type: 'control',
+                            command: 'delete_message',
+                            index: messageIndex,
+                            type: messageType
+                        }));
+                    } catch (e) {
+                        console.error('发送删除命令失败:', e);
+                    }
+                }
+                
+                // 前端动画删除
+                messageDiv.style.animation = 'fadeOut 0.3s ease-out forwards';
+                setTimeout(() => {
+                    messageDiv.remove();
+                    // 重新计算剩余消息的索引
+                    updateMessageIndices();
+                }, 300);
+            }
+        }
+        
+        // 更新消息索引（删除消息后重新计算）
+        function updateMessageIndices() {
+            const messagesContainer = document.getElementById('messagesContainer');
+            if (!messagesContainer) return;
+            
+            const messages = messagesContainer.querySelectorAll('.message');
+            let userIndex = 0;
+            let assistantIndex = 0;
+            
+            messages.forEach(msg => {
+                const type = msg.getAttribute('data-message-type');
+                if (type === 'user') {
+                    msg.setAttribute('data-message-index', userIndex);
+                    userIndex++;
+                } else if (type === 'assistant') {
+                    msg.setAttribute('data-message-index', assistantIndex);
+                    assistantIndex++;
+                }
+            });
+        }
+
+        // 切换TTS
+        async function changeTTS(ttsValue) {
+            const selectedTTS = ttsValue;
+            console.log('切换TTS:', selectedTTS);
+            
+            try {
+                const response = await fetch('/api/settings/change', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        TTS_MODEL: selectedTTS
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    console.log('设置更新成功:', result.data);
+                } else {
+                    console.error('设置更新失败:', result.message);
+                    alert('设置更新失败: ' + result.message);
+                }
+            } catch (error) {
+                console.error('调用设置接口失败:', error);
+                alert('调用设置接口失败');
+            }
+        }
+
+        // 打开TTS选择弹框
+        function openTTSSelectModal() {
+            const modal = document.getElementById('ttsSelectModal');
+            modal.style.display = 'block';
+            updateTTSOptionSelection();
+        }
+
+        // 关闭TTS选择弹框
+        function closeTTSSelectModal() {
+            const modal = document.getElementById('ttsSelectModal');
+            modal.style.display = 'none';
+        }
+
+        // 更新TTS选项选中状态
+        function updateTTSOptionSelection() {
+            fetch('/api/settings/get')
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        const currentTTS = result.data.TTS_MODEL || 'ChatTTS';
+                        document.querySelectorAll('.tts-option').forEach(option => {
+                            if (option.dataset.value === currentTTS) {
+                                option.classList.add('selected');
+                            } else {
+                                option.classList.remove('selected');
+                            }
+                        });
+                    }
+                })
+                .catch(error => console.error('获取当前TTS设置失败:', error));
+        }
+
+        // 选择TTS
+        function selectTTS(ttsValue) {
+            changeTTS(ttsValue);
+            closeTTSSelectModal();
+        }
+
+        // 发送语音测试
+        async function sendVoiceTest() {
+            if (!isConnected) {
+                alert('请先连接WebSocket服务器');
+                return;
+            }
+            
+            if (isSendingAudio) {
+                console.log('正在发送音频中，请勿重复点击');
+                return;
+            }
+            
+            try {
+                console.log('开始发送语音测试文件');
+                isSendingAudio = true; // 标记正在发送
+                
+                // 通过API获取语音文件，添加时间戳防止缓存
+                const response = await fetch(`/api/voiceprint/play?filename=current_voiceprint.webm&t=${Date.now()}`);
+                if (!response.ok) {
+                    throw new Error(`无法读取语音文件: ${response.status} ${response.statusText}`);
+                }
+                
+                const arrayBuffer = await response.arrayBuffer();
+                console.log('语音文件读取成功，大小:', arrayBuffer.byteLength, '字节');
+                
+                // 检查音频数据是否有效
+                if (arrayBuffer.byteLength < 100) {
+                    throw new Error('音频文件太小，可能是无效数据');
+                }
+                
+                // 创建音频上下文处理音频数据
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // 解码音频数据
+                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                console.log('音频解码成功，采样率:', audioBuffer.sampleRate, '时长:', audioBuffer.duration, '秒');
+                
+                // 获取音频数据
+                const channelData = audioBuffer.getChannelData(0); // 获取第一个声道
+                
+                // 降采样到16kHz
+                const downsampledData = downsampleBuffer(channelData, audioBuffer.sampleRate, 16000);
+                
+                // 转换为16bit PCM
+                const int16Buffer = floatTo16BitPCM(downsampledData);
+                
+                // 添加微小随机变化以绕过后端重复检测
+                const testAudioBuffer = new Int16Array(int16Buffer.length);
+                const randomOffset = Math.floor(Math.random() * 1000); // 随机偏移量
+                for (let i = 0; i < int16Buffer.length; i++) {
+                    // 添加微小的随机变化（-1 到 +1），不影响语音识别
+                    testAudioBuffer[i] = int16Buffer[i] + Math.floor(Math.random() * 3 - 1);
+                }
+                
+                console.log('处理后的音频数据，长度:', testAudioBuffer.length, '采样点');
+                
+                // 分块发送音频数据（模拟实时流）
+                const chunkSize = 1024;
+                let offset = 0;
+                let chunksSent = 0;
+                const maxChunks = Math.ceil(testAudioBuffer.length / chunkSize);
+                
+                const sendNextChunk = async () => {
+                    if (offset >= testAudioBuffer.length) {
+                        console.log(`语音文件发送完成，共发送 ${chunksSent} 个音频块`);
+                        isSendingAudio = false;
+                        return;
+                    }
+                    
+                    // 防止无限递归：检查发送块数
+                    if (chunksSent > maxChunks * 2) {
+                        console.error('发送块数超过限制，停止发送');
+                        isSendingAudio = false;
+                        return;
+                    }
+                    
+                    const end = Math.min(offset + chunkSize, testAudioBuffer.length);
+                    const chunk = testAudioBuffer.subarray(offset, end);
+                    
+                    if (websocket && websocket.readyState === WebSocket.OPEN) {
+                        websocket.send(chunk.buffer);
+                        chunksSent++;
+                        
+                        // 减少日志输出频率
+                        if (Math.random() < 0.05 || chunksSent === 1 || offset + chunkSize >= testAudioBuffer.length) {
+                            console.log(`发送音频块 ${chunksSent}/${maxChunks}，偏移: ${offset}-${end}，长度: ${chunk.length} 采样点`);
+                        }
+                    } else {
+                        console.warn('WebSocket连接已断开，停止发送');
+                        isSendingAudio = false;
+                        return;
+                    }
+                    
+                    offset = end;
+                    
+                    // 使用 Promise + setTimeout 控制发送速率
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    sendNextChunk();
+                };
+                
+                // 开始发送
+                sendNextChunk();
+                
+            } catch (error) {
+                console.error('发送语音测试失败:', error);
+                isSendingAudio = false; // 发生错误，重置标志
+            }
+        }
+        // 开始录音
+        async function startRecording() {
+            try {
+                console.log('开始录音');
+                
+                // 清空音频队列（用户打断当前语音）
+                audioQueue = [];
+                if (currentAudioContext) {
+                    currentAudioContext.close();
+                    currentAudioContext = null;
+                }
+                isPlayingAudio = false;
+                
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true} });
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // 尝试使用AudioWorklet（现代方案）
+                try {
+                    await audioContext.audioWorklet.addModule('/static/audio-processor.js');
+                    const workletNode = new AudioWorkletNode(audioContext, 'audio-processor');
+                    
+                    workletNode.port.onmessage = (event) => {
+                        if (event.data.type === 'audioChunk') {
+                            // 直接接收已经分块好的音频数据
+                            const chunk = new Int16Array(event.data.data);
+                            
+                            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                                // websocket.send(chunk.buffer);
+                                if (Math.random() < 0.01) { // 只输出1%的日志
+                                    console.log('发送音频数据，长度:', chunk.length, '采样点');
+                                }
+                            } else {
+                                console.warn('WebSocket未连接，无法发送音频数据');
+                            }
+                        }
+                    };
+                    
+                    workletNode.port.postMessage({
+                        type: 'init',
+                        sampleRate: audioContext.sampleRate
+                    });
+                    
+                    source = audioContext.createMediaStreamSource(stream);
+                    source.connect(workletNode);
+                    workletNode.connect(audioContext.destination);
+                    processor = workletNode;
+                    
+                    console.log('使用AudioWorklet方案');
+                    
+                } catch (workletError) {
+                    // AudioWorklet失败，回退到ScriptProcessorNode（已弃用但兼容）
+                    console.warn('AudioWorklet加载失败，使用ScriptProcessorNode:', workletError);
+                    
+                    source = audioContext.createMediaStreamSource(stream);
+                    const bufferSize = 4096;
+                    processor = audioContext.createScriptProcessor(bufferSize, 1, 1);
+
+                    processor.onaudioprocess = (e) => {
+                        if (Math.random() < 0.01) { // 只输出1%的日志
+                            console.log('处理音频数据');
+                        }
+                        let inputData = e.inputBuffer.getChannelData(0);
+                        
+                        // 降采样到16kHz
+                        let downsampledBuffer = downsampleBuffer(inputData, audioContext.sampleRate, 16000);
+                        
+                        // 转换为16bit PCM并累积
+                        let int16Buffer = floatTo16BitPCM(downsampledBuffer);
+                        audioBuffer.push(...int16Buffer);
+                        
+                        // 当缓冲区达到足够长度时发送
+                        while (audioBuffer.length >= samplesPerBuffer) {
+                            const chunk = new Int16Array(audioBuffer.splice(0, samplesPerBuffer));
+                            // websocket.send(chunk.buffer);
+                            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                                if (Math.random() < 0.01) { // 只输出1%的日志
+                                    console.log('发送音频数据，长度:', chunk.length, '采样点');
+                                }
+                            } else {
+                                console.warn('WebSocket未连接，无法发送音频数据');
+                                break;
+                            }
+                        }
+                    };
+
+                    source.connect(processor);
+                    processor.connect(audioContext.destination);
+                    
+                    console.log('使用ScriptProcessorNode方案');
+                }
+
+                isRecording = true;
+                updateButtonStates();
+
+            } catch (error) {
+                console.error('开始录音失败:', error);
+                alert('无法访问麦克风，请检查权限设置');
+            }
+        }
+
+        // 停止录音
+        function stopRecording() {
+            console.log('停止录音');
+            if (isRecording) {
+                // 停止音频处理节点
+                if (source) {
+                    source.disconnect();
+                    source = null;
+                }
+                
+                if (processor) {
+                    processor.disconnect();
+                    processor = null;
+                }
+                
+                if (audioContext) {
+                    audioContext.close();
+                    audioContext = null;
+                }
+                
+                isRecording = false;
+                updateButtonStates();
+            }
+        }
+
+        // 切换录音状态
+        function toggleRecording() {
+            console.log('切换录音状态，当前状态:', isRecording);
+            
+            // 如果已经连接，直接切换录音状态
+            if (isRecording) {
+                // 如果正在录音，则停止录音
+                stopRecording();
+                console.log('录音已停止');
+            } else {
+                // 如果未录音，则开始录音
+                startRecording();
+                console.log('录音已开始');
+            }
+        }
+
+       // 更新连接状态
+        function updateConnectionStatus(connected) {
+            const statusElem = document.getElementById('connectionStatus');
+            
+            if (connected) {
+                statusElem.className = 'connection-status connected';
+                statusElem.textContent = '已连接服务器';
+            } else {
+                statusElem.className = 'connection-status disconnected';
+                statusElem.textContent = '未连接服务器';
+            }
+        }
+        // 更新按钮状态
+        function updateButtonStates() {
+            const recordBtn = document.getElementById('recordBtn');
+            const recordIcon = document.getElementById('recordIcon');
+            const clearBtn = document.getElementById('clearBtn');
+            const keywordWakeupBtn = document.getElementById('keywordWakeupBtn');
+            const voiceprintMatchBtn = document.getElementById('voiceprintMatchBtn');
+            const voiceTestBtn = document.getElementById('voiceTestBtn');
+            
+            if (!recordBtn || !recordIcon || !clearBtn) return;
+            
+            // 更新录音按钮状态
+            if (isConnected && isRecording) {
+                recordBtn.className = 'btn icon-btn active';
+                recordIcon.className = 'fas fa-stop';
+            } else if (isConnected) {
+                recordBtn.className = 'btn icon-btn';
+                recordIcon.className = 'fas fa-microphone';
+            } else {
+                recordBtn.className = 'btn icon-btn';
+                recordIcon.className = 'fas fa-microphone';
+            }
+            
+            // 更新清空按钮状态
+            clearBtn.className = 'btn icon-btn';
+            
+            // 更新语音测试按钮状态
+            if (voiceTestBtn) {
+                if (isConnected) {
+                    voiceTestBtn.className = 'btn icon-btn';
+                } else {
+                    voiceTestBtn.className = 'btn icon-btn';
+                }
+            }
+            
+            // 初始化关键词唤醒和声纹匹配按钮状态
+            if (keywordWakeupBtn) {
+                keywordWakeupBtn.className = 'btn icon-btn';
+            }
+            if (voiceprintMatchBtn) {
+                voiceprintMatchBtn.className = 'btn icon-btn';
+            }
+        }
+
+        // 切换关键词唤醒功能
+        function toggleKeywordWakeup() {
+            openKeywordWakeupModal();
+        }
+
+        // 打开关键词唤醒设置弹框
+        async function openKeywordWakeupModal() {
+            const modal = document.getElementById('keywordWakeupModal');
+            modal.style.display = 'block';
+            
+            try {
+                const response = await fetch('/api/settings/get');
+                const result = await response.json();
+                if (result.success) {
+                    document.getElementById('wakeupKeyword').value = result.data.WAKEUP_KEYWORD || '';
+                }
+            } catch (error) {
+                console.error('获取设置失败:', error);
+            }
+        }
+
+        // 关闭关键词唤醒设置弹框
+        function closeKeywordWakeupModal() {
+            const modal = document.getElementById('keywordWakeupModal');
+            modal.style.display = 'none';
+        }
+
+        // 保存关键词唤醒设置
+        async function saveKeywordWakeup() {
+            const keywordInput = document.getElementById('wakeupKeyword');
+            const keyword = keywordInput.value.trim();
+            
+            try {
+                const response = await fetch('/api/settings/change', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        WAKEUP_KEYWORD: keyword
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    closeKeywordWakeupModal();
+                } else {
+                    alert('保存失败: ' + result.message);
+                }
+            } catch (error) {
+                console.error('保存设置失败:', error);
+                alert('保存设置失败');
+            }
+        }
+
+        // 声纹录制相关变量
+        let voiceprintRecorder = null;
+        let voiceprintAudioChunks = [];
+        let voiceprintAudioBlob = null;
+        let voiceprintRecordingStartTime = null;
+        let voiceprintRecordingTimer = null;
+        let voiceprintAudioContext = null;
+        let voiceprintAnalyser = null;
+        let voiceprintDataArray = null;
+        let voiceprintAnimationId = null;
+
+        // 关闭声纹录制弹框
+        function closeVoiceprintModal() {
+            const modal = document.getElementById('voiceprintModal');
+            modal.style.display = 'none';
+            stopVoiceprintRecording();
+            resetVoiceprintRecording();
+        }
+
+        // 打开声纹录制弹框
+        function openVoiceprintModal() {
+            const modal = document.getElementById('voiceprintModal');
+            modal.style.display = 'block';
+            resetVoiceprintRecording();
+            loadVoiceprintFiles(); // 加载声纹文件
+        }
+
+        // 重置声纹录制状态
+        function resetVoiceprintRecording() {
+            voiceprintAudioChunks = [];
+            voiceprintAudioBlob = null;
+            voiceprintRecordingStartTime = null;
+            
+            if (voiceprintRecordingTimer) {
+                clearInterval(voiceprintRecordingTimer);
+                voiceprintRecordingTimer = null;
+            }
+            
+            if (voiceprintAnimationId) {
+                cancelAnimationFrame(voiceprintAnimationId);
+                voiceprintAnimationId = null;
+            }
+            
+            updateVoiceprintButtons(false);
+            clearVisualizer();
+        }
+
+        // 删除声纹文件
+        function deleteVoiceprintFile(filename) {
+            if (!confirm('确定要删除当前声纹文件吗？删除后需要重新录制。')) {
+                return;
+            }
+            
+            fetch('/api/voiceprint/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ filename: filename })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadVoiceprintFiles(); // 重新加载当前文件显示
+                } else {
+                    alert('删除失败: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('删除声纹文件失败:', error);
+                alert('删除失败: ' + error.message);
+            });
+        }
+
+        // 加载当前声纹文件
+        function loadVoiceprintFiles() {
+            console.log('开始加载当前声纹文件...');
+            fetch('/api/voiceprint/files')
+            .then(response => {
+                console.log('API响应状态:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('API返回数据:', data);
+                const filesSection = document.getElementById('voiceprintFilesSection');
+                
+                if (data.success && data.files && data.files.length > 0) {
+                    console.log(`找到 ${data.files.length} 个声纹文件，显示最新的一个`);
+                    filesSection.style.display = 'block';
+                    filesSection.innerHTML = '';
+                    // 只显示最新的一个文件
+                    const latestFile = data.files[0];
+                    const fileItem = createVoiceprintFileItem(latestFile);
+                    filesSection.appendChild(fileItem);
+                } else {
+                    console.log('未找到声纹文件或API返回异常');
+                    filesSection.style.display = 'block';
+                    filesSection.innerHTML = '<div class="no-voiceprint-files">暂无已上传的声纹文件</div>';
+                }
+            })
+            .catch(error => {
+                console.error('加载声纹文件失败:', error);
+            });
+        }
+
+        // 创建当前声纹文件显示项
+        function createVoiceprintFileItem(file) {
+            const fileItem = document.createElement('div');
+            
+            fileItem.innerHTML = `
+                <div class="voiceprint-file-info">
+                    <div class="voiceprint-file-details">
+                        <div class="voiceprint-file-name">${file.filename}</div>
+                        <div class="voiceprint-file-meta">大小: ${formatFileSize(file.size)} | 上传时间: ${formatUploadTime(file.uploadTime)}</div>
+                    </div>
+                    <div class="voiceprint-file-actions">
+                        <button class="voiceprint-action-btn voiceprint-play-btn" onclick="playVoiceprintFile('${file.filename}')" title="播放声纹文件">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        <button class="voiceprint-action-btn voiceprint-delete-btn" onclick="deleteVoiceprintFile('${file.filename}')" title="删除声纹文件">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+               
+            `;
+            
+            return fileItem;
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // 格式化上传时间
+        function formatUploadTime(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleString('zh-CN');
+        }
+
+        // 播放声纹文件
+        function playVoiceprintFile(filename) {
+            console.log('播放声纹文件:', filename);
+            
+            // 获取音频文件的URL - 使用正确的API端点
+            const audioUrl = `/api/voiceprint/play?filename=${encodeURIComponent(filename)}`;
+            
+            // 创建Audio对象
+            const audio = new Audio(audioUrl);
+            
+            // 播放音频
+            audio.play().then(() => {
+                console.log('开始播放声纹文件:', filename);
+                
+                // 更新播放按钮状态
+                updatePlayButtonState(filename, 'pause');
+                
+            }).catch(error => {
+                console.error('播放失败:', error);
+                alert('播放失败: ' + error.message);
+            });
+            
+            // 监听播放结束事件
+            audio.addEventListener('ended', () => {
+                console.log('播放结束');
+                updatePlayButtonState(filename, 'play');
+            });
+            
+            // 监听播放错误事件
+            audio.addEventListener('error', (error) => {
+                console.error('音频播放错误:', error);
+                alert('音频播放错误，请检查文件是否存在');
+                updatePlayButtonState(filename, 'play');
+            });
+            
+            // 存储音频对象以便暂停
+            window.currentPlayingAudio = audio;
+            window.currentPlayingFilename = filename;
+        }
+        
+        // 暂停声纹文件
+        function pauseVoiceprintFile(filename) {
+            console.log('暂停声纹文件:', filename);
+            
+            if (window.currentPlayingAudio && window.currentPlayingFilename === filename) {
+                window.currentPlayingAudio.pause();
+                updatePlayButtonState(filename, 'play');
+            }
+        }
+        
+        // 更新播放按钮状态
+        function updatePlayButtonState(filename, state) {
+            // 找到对应的播放按钮
+            const playBtns = document.querySelectorAll('.voiceprint-play-btn');
+            playBtns.forEach(btn => {
+                if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(filename)) {
+                    if (state === 'pause') {
+                        btn.innerHTML = '<i class="fas fa-pause"></i>';
+                        btn.title = '暂停';
+                        btn.setAttribute('onclick', `pauseVoiceprintFile('${filename}')`);
+                    } else {
+                        btn.innerHTML = '<i class="fas fa-play"></i>';
+                        btn.title = '播放';
+                        btn.setAttribute('onclick', `playVoiceprintFile('${filename}')`);
+                    }
+                }
+            });
+        }
+
+        // 更新声纹录制按钮状态
+        function updateVoiceprintButtons(isRecording) {
+            const toggleBtn = document.getElementById('toggleRecordBtn');
+            
+            // 更新切换录制按钮
+            if (isRecording) {
+                toggleBtn.innerHTML = '<i class="fas fa-stop"></i> 停止录制';
+                toggleBtn.className = 'btn btn-danger';
+                toggleBtn.disabled = false;
+            } else {
+                toggleBtn.innerHTML = '<i class="fas fa-microphone"></i> 开始录制';
+                toggleBtn.className = 'btn btn-primary';
+                toggleBtn.disabled = false;
+            }
+        }
+
+
+
+        // 清空音频可视化
+        function clearVisualizer() {
+            const canvas = document.getElementById('visualizerCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // 切换声纹录制状态
+        function toggleVoiceprintRecording() {
+            if (voiceprintRecorder && voiceprintRecorder.state === 'recording') {
+                stopVoiceprintRecording();
+            } else {
+                startVoiceprintRecording();
+            }
+        }
+
+        // 开始声纹录制
+        async function startVoiceprintRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        sampleRate: 16000,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    } 
+                });
+                
+                voiceprintAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+                voiceprintAnalyser = voiceprintAudioContext.createAnalyser();
+                voiceprintAnalyser.fftSize = 256;
+                
+                const source = voiceprintAudioContext.createMediaStreamSource(stream);
+                source.connect(voiceprintAnalyser);
+                
+                voiceprintDataArray = new Uint8Array(voiceprintAnalyser.frequencyBinCount);
+                
+                // 设置MediaRecorder
+                voiceprintRecorder = new MediaRecorder(stream, {
+                    mimeType: 'audio/webm;codecs=opus'
+                });
+                
+                voiceprintAudioChunks = [];
+                
+                voiceprintRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        voiceprintAudioChunks.push(event.data);
+                    }
+                };
+                
+                voiceprintRecorder.onstop = () => {
+                    voiceprintAudioBlob = new Blob(voiceprintAudioChunks, { type: 'audio/webm' });
+                    console.log('录音完成，音频大小:', voiceprintAudioBlob.size, 'bytes');
+                };
+                
+                // 开始录制
+                voiceprintRecorder.start(100); // 每100ms收集一次数据
+                voiceprintRecordingStartTime = Date.now();
+                
+                // 更新UI状态
+                updateVoiceprintButtons(true);
+                
+                // 启动计时器
+                voiceprintRecordingTimer = setInterval(() => {
+                    const elapsed = Math.floor((Date.now() - voiceprintRecordingStartTime) / 1000);
+                    
+                    // 自动停止录制（最长10秒）
+                    if (elapsed >= 10) {
+                        stopVoiceprintRecording();
+                    }
+                }, 1000);
+                
+                // 启动音频可视化
+                startVisualizer();
+                
+            } catch (error) {
+                console.error('开始录制失败:', error);
+                alert('无法访问麦克风，请检查权限设置');
+            }
+        }
+
+        // 停止声纹录制
+        function stopVoiceprintRecording() {
+            if (voiceprintRecorder && voiceprintRecorder.state === 'recording') {
+                voiceprintRecorder.stop();
+                
+                // 停止所有音轨
+                if (voiceprintRecorder.stream) {
+                    voiceprintRecorder.stream.getTracks().forEach(track => track.stop());
+                }
+                
+                if (voiceprintAudioContext) {
+                    voiceprintAudioContext.close();
+                    voiceprintAudioContext = null;
+                }
+                
+                if (voiceprintRecordingTimer) {
+                    clearInterval(voiceprintRecordingTimer);
+                    voiceprintRecordingTimer = null;
+                }
+                
+                if (voiceprintAnimationId) {
+                    cancelAnimationFrame(voiceprintAnimationId);
+                    voiceprintAnimationId = null;
+                }
+                
+                console.log('录音已停止，开始自动上传');
+                
+                // 自动上传声纹录音
+                setTimeout(() => {
+                    uploadVoiceprintRecording();
+                }, 500); // 延迟500ms确保录音完全停止
+            }
+        }
+
+        // 上传声纹录音
+        function uploadVoiceprintRecording() {
+            updateVoiceprintButtons(false);
+            if (!voiceprintAudioBlob) {
+                alert('请先录制声纹音频');
+                return;
+            }
+            
+            // 检查音频大小是否合适
+            if (voiceprintAudioBlob.size < 1000) {
+                alert('录音太短，请录制至少3-5秒的音频');
+                return;
+            }
+            
+           
+            
+            // 创建FormData对象
+            const formData = new FormData();
+            formData.append('voiceprint', voiceprintAudioBlob, 'voiceprint.webm');
+            formData.append('client_id', 'current_voiceprint'); // 使用固定client_id
+            
+            // 发送到服务器
+            fetch('/api/voiceprint/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // 重新加载声纹文件列表
+                    loadVoiceprintFiles();
+                } else {
+                    throw new Error(data.message || '服务器返回失败');
+                }
+            })
+            .catch(error => {
+                console.error('上传失败:', error);
+                updateVoiceprintButtons(false); // 重新启用录制按钮
+                alert('声纹上传失败: ' + error.message);
+            });
+        }
+
+        // 音频可视化
+        function startVisualizer() {
+            const canvas = document.getElementById('visualizerCanvas');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            function draw() {
+                if (!voiceprintAnalyser) return;
+                
+                voiceprintAnalyser.getByteFrequencyData(voiceprintDataArray);
+                
+                ctx.clearRect(0, 0, width, height);
+                
+                const barWidth = (width / voiceprintDataArray.length) * 2.5;
+                let x = 0;
+                
+                for (let i = 0; i < voiceprintDataArray.length; i++) {
+                    const barHeight = voiceprintDataArray[i] / 255 * height;
+                    
+                    const gradient = ctx.createLinearGradient(0, height - barHeight, 0, height);
+                    gradient.addColorStop(0, '#667eea');
+                    gradient.addColorStop(1, '#764ba2');
+                    
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(x, height - barHeight, barWidth, barHeight);
+                    
+                    x += barWidth + 1;
+                }
+                
+                voiceprintAnimationId = requestAnimationFrame(draw);
+            }
+            
+            draw();
+        }
+
+        // 点击弹框外部关闭
+        window.onclick = function(event) {
+            const voiceprintModal = document.getElementById('voiceprintModal');
+            const keywordWakeupModal = document.getElementById('keywordWakeupModal');
+            const live2dModelModal = document.getElementById('live2dModelModal');
+            const ttsSelectModal = document.getElementById('ttsSelectModal');
+            
+            // 检查点击是否在文件选择器或上传区域内部，如果是则阻止关闭弹框
+            const fileInput = document.getElementById('live2dModelFile');
+            const dropzone = document.querySelector('.upload-dropzone');
+            
+            if (fileInput && fileInput.contains(event.target)) {
+                return; // 阻止文件选择器点击触发关闭
+            }
+            
+            if (dropzone && dropzone.contains(event.target)) {
+                return; // 阻止上传区域点击触发关闭
+            }
+            
+            if (event.target === voiceprintModal) {
+                closeVoiceprintModal();
+            }
+            
+            if (event.target === keywordWakeupModal) {
+                closeKeywordWakeupModal();
+            }
+            
+            if (event.target === live2dModelModal) {
+                closeLive2DModelModal();
+            }
+            
+            if (event.target === ttsSelectModal) {
+                closeTTSSelectModal();
+            }
+        }
+
+        // Live2D模型管理相关变量
+        let currentLive2DModel = null;
+        let live2dModels = [];
+        let live2dModel = null;
+
+        // 打开Live2D模型选择弹框
+        function openLive2DModelModal() {
+            const modal = document.getElementById('live2dModelModal');
+            modal.style.display = 'block';
+            loadLive2DModels();
+        }
+
+        // 关闭Live2D模型选择弹框
+        function closeLive2DModelModal() {
+            const modal = document.getElementById('live2dModelModal');
+            modal.style.display = 'none';
+        }
+        function initLive2DModel(){
+            fetch('/api/settings/get')
+                .then(res => res.json())
+                .then(result => {
+                    if (result.success && result.data.CURRENT_LIVE2D_MODEL) {
+                        try {
+                            currentLive2DModel = JSON.parse(result.data.CURRENT_LIVE2D_MODEL);
+                        } catch (e) {
+                            console.warn('解析后端模型数据失败:', e);
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.warn('获取后端配置失败:', err);
+                })
+                .finally(() => {
+                    loadLive2DModel(currentLive2DModel);
+                });
+        };
+        // 加载实际的Live2D模型（使用pixi-live2d-display）
+        async function loadLive2DModel(currentModel) {
+            try {
+                // 异步加载Live2D模型
+                // 把currentModel.filePath这个下划线改成/
+                const filePath = currentModel.filePath.replace('_', '/');
+                
+                const modelUrl = `http://localhost:8000/${filePath}`;
+
+                if (live2dModel) {
+                    app.stage.removeChild(live2dModel);
+                    live2dModel.destroy();
+                }
+                live2dModel = await live2d.Live2DModel.from(modelUrl);
+                // 将模型添加到舞台
+                app.stage.addChild(live2dModel);
+
+                // 实现centerInside效果：等比例缩放并居中显示
+                function centerInsideModel() {
+                    const live2dPanel = document.querySelector('.live2d-panel');
+                    const panelWidth = live2dPanel.clientWidth;
+                    const panelHeight = live2dPanel.clientHeight;
+                    
+                    // 使用internalModel获取更精确的模型尺寸
+                    const modelWidth = live2dModel.internalModel?.width || live2dModel.width;
+                    const modelHeight = live2dModel.internalModel?.height || live2dModel.height;
+                    
+                    // 计算等比例缩放比例
+                    const scaleX = panelWidth / modelWidth;
+                    const scaleY = panelHeight / modelHeight;
+                    const scale = Math.min(scaleX, scaleY);
+                    
+                    // 设置缩放
+                    live2dModel.scale.set(scale);
+                    
+                    // 计算居中位置
+                    const scaledWidth = modelWidth * scale;
+                    const scaledHeight = modelHeight * scale;
+                    live2dModel.x = (panelWidth - scaledWidth) / 2;
+                    live2dModel.y = (panelHeight - scaledHeight) / 2;
+                }
+                
+                // 初始居中
+                centerInsideModel();
+                
+                // 为Cubism 4.0模型添加点击交互
+                live2dModel.on("hit", (hitAreas) => {
+                    if (hitAreas.includes("Body")) {
+                        live2dModel.motion("Tap");  // 点击身体播放对应动作
+                    }
+                    if (hitAreas.includes("Head")) {
+                        live2dModel.expression();  // 点击头部切换表情
+                    }
+                });
+                
+                // 窗口大小变化时重新调整模型位置和缩放
+                window.addEventListener('resize', () => {
+                    centerInsideModel();
+                });
+                
+                console.log('Live2D模型加载完成！');
+            } catch (error) {
+                console.error('Live2D模型加载失败:', error);
+            }
+        }
+        // 加载Live2D模型列表
+        async function loadLive2DModels() {
+            try {
+                const response = await fetch('http://localhost:8000/api/live2d/models');
+                const result = await response.json();
+                
+                if (result.success) {
+                    live2dModels = result.models;
+                    
+                    const settingsRes = await fetch('/api/settings/get');
+                    const settingsData = await settingsRes.json();
+                    
+                    if (settingsData.success && settingsData.data.CURRENT_LIVE2D_MODEL) {
+                        try {
+                            currentLive2DModel = JSON.parse(settingsData.data.CURRENT_LIVE2D_MODEL);
+                        } catch (e) {
+                            console.warn('解析后端模型数据失败:', e);
+                        }
+                    }
+                    
+                    renderModelList(live2dModels, currentLive2DModel);
+                } else {
+                    renderModelList(null, null, result.message);
+                }
+            } catch (error) {
+                console.error('加载Live2D模型失败:', error);
+                renderModelList(null, null, '网络连接错误');
+            }
+        }
+
+        // 选择Live2D模型
+        function selectLive2DModel(modelName) {
+            console.log("选择了模型名称:", modelName);
+            const model = live2dModels.find(m => m.name === modelName);
+            if (model) {
+                currentLive2DModel = model;
+                
+                fetch('/api/settings/change', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        CURRENT_LIVE2D_MODEL: JSON.stringify(currentLive2DModel)
+                    })
+                }).catch(err => console.error('保存模型配置失败:', err));
+                
+                renderModelList(live2dModels, currentLive2DModel);
+                
+                loadLive2DModel(currentLive2DModel);
+
+                closeLive2DModelModal();
+            }
+        }
+
+        // 渲染模型列表到指定元素
+        function renderModelList(models, currentModel, errorMessage = null) {
+
+            const modelListElement = document.getElementById('live2dModelList');
+            
+            if (errorMessage) {
+                // 错误状态显示
+                modelListElement.innerHTML = `
+                    <div class="no-models">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 32px; margin-bottom: 10px; color: #dc3545;"></i>
+                        <div>加载模型失败</div>
+                        <div style="font-size: 12px; margin-top: 5px;">${errorMessage}</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            if (!models || models.length === 0) {
+                // 空模型列表显示
+                modelListElement.innerHTML = `
+                    <div class="no-models">
+                        <i class="fas fa-cube" style="font-size: 32px; margin-bottom: 10px; color: #6c757d;"></i>
+                        <div>暂无模型</div>
+                        <div style="font-size: 12px; margin-top: 5px;">请在后端live2d_models目录中添加模型文件</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            
+            // 重新排序模型列表：将选择的模型放在最前面
+            const sortedModels = [...models];
+            if (currentModel) {
+                const currentIndex = models.findIndex(m => m.name === currentModel.name);
+                if (currentIndex >= 0 && currentIndex < sortedModels.length) {
+                    const selectedModel = sortedModels.splice(currentIndex, 1)[0];
+                    sortedModels.unshift(selectedModel);
+                }
+            }
+            
+            sortedModels.forEach((model, displayIndex) => {
+                const isSelected = model.name === currentModel?.name;
+                
+                html += `
+                    <div class="model-item ${isSelected ? 'selected' : ''}" onclick="selectLive2DModel('${model.name}')">
+                        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; cursor: pointer;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-cube" style="color: #667eea;"></i>
+                                <span class="model-name">${model.name}</span>
+                                ${displayIndex === 0 && currentModel ? '<span style="font-size: 10px; color: #28a745; margin-left: 5px;">(上次选择)</span>' : ''}
+                            </div>
+                            <button class="delete-model-btn" onclick="deleteLive2DModel('${model.name}', event)" title="删除模型">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            modelListElement.innerHTML = html;
+        }
+
+        // 删除Live2D模型
+        async function deleteLive2DModel(modelName, event) {
+            // 阻止事件冒泡，避免触发选择模型
+            event.stopPropagation();
+            
+            if (!confirm(`确定要删除模型 "${modelName}" 吗？此操作不可撤销。`)) {
+                return;
+            }
+
+            if (currentLive2DModel && currentLive2DModel.name === modelName) {
+
+                return;
+            }
+            
+            try {
+                const response = await fetch(`http://localhost:8000/api/live2d/models/${modelName}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // 重新加载模型列表
+                    await loadLive2DModels();
+                } 
+            } catch (error) {
+                console.error('删除模型失败:', error);
+            }
+        }
+        
+        // 使模型可拖拽
+        function makeDraggable(model) {
+            model.on('pointerdown', (e) => {
+                model.dragging = true;
+                model._pointerX = e.data.global.x - model.x;
+                model._pointerY = e.data.global.y - model.y;
+            });
+            
+            model.on('pointermove', (e) => {
+                if (model.dragging) {
+                    model.position.x = e.data.global.x - model._pointerX;
+                    model.position.y = e.data.global.y - model._pointerY;
+                }
+            });
+            
+            model.on('pointerupoutside', () => {
+                model.dragging = false;
+            });
+            
+            model.on('pointerup', () => {
+                model.dragging = false;
+            });
+        }
+        
+        // 触发随机动作
+        function triggerRandomMotion(model, motionType = 'random') {
+            if (model.motionManager) {
+                const motions = model.motionManager.groups;
+                const motionNames = Object.keys(motions);
+                
+                if (motionNames.length > 0) {
+                    let availableMotions = motionNames;
+                    
+                    // 根据类型筛选动作
+                    if (motionType === 'body') {
+                        availableMotions = motionNames.filter(name => 
+                            name.toLowerCase().includes('body') || 
+                            name.toLowerCase().includes('tap') ||
+                            name.toLowerCase().includes('touch')
+                        );
+                    }
+                    
+                    // 如果没有特定类型的动作，使用所有动作
+                    if (availableMotions.length === 0) {
+                        availableMotions = motionNames;
+                    }
+                    
+                    const randomMotion = availableMotions[Math.floor(Math.random() * availableMotions.length)];
+                    console.log('触发动作:', randomMotion);
+                    model.motion(randomMotion);
+                }
+            }
+        }
+        
+        // 触发随机表情
+        function triggerRandomExpression(model) {
+            if (model.expressionManager) {
+                const expressions = model.expressionManager.expressions;
+                const expressionNames = Object.keys(expressions);
+                
+                if (expressionNames.length > 0) {
+                    const randomExpression = expressionNames[Math.floor(Math.random() * expressionNames.length)];
+                    console.log('触发表情:', randomExpression);
+                    model.expression(randomExpression);
+                }
+            }
+        }
+
+        // 上传Live2D模型压缩包
+        async function uploadLive2DModel(file) {
+            if (!file) {
+                return;
+            }
+            
+            // 检查文件格式
+            const fileName = file.name.toLowerCase();
+            if (!fileName.endsWith('.zip') && !fileName.endsWith('.rar') && !fileName.endsWith('.7z')) {
+                addMessage('请上传.zip、.rar或.7z格式的压缩包', 'error');
+                return;
+            }
+
+            // 显示上传状态
+            const dropzone = document.getElementById('live2dUploadDropzone');
+            if (dropzone) {
+                dropzone.innerHTML = '<i class="fas fa-spinner fa-spin"></i><p>上传中...</p>';
+                dropzone.style.cursor = 'not-allowed';
+            }
+
+            try {
+                // 创建FormData对象
+                const formData = new FormData();
+                formData.append('zip_file', file);
+
+                // 发送到后端API
+                const response = await fetch('http://localhost:8000/api/live2d/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {                    
+                    // 刷新模型列表
+                    await loadLive2DModels();
+                }
+
+            } catch (error) {
+                console.error('上传Live2D模型失败:', error);
+            }
+
+            // 恢复上传区域状态
+            if (dropzone) {
+                dropzone.innerHTML = '<i class="fas fa-cloud-upload-alt"></i><p>点击或拖拽压缩包到此处上传</p><small>支持 .zip, .rar, .7z 格式的Live2D模型压缩包</small>';
+                dropzone.style.cursor = 'pointer';
+            }
+        }
+
+
+        // 页面卸载时清理资源
+        window.addEventListener('beforeunload', function() {
+            disconnectWebSocket();
+        });
+        // 初始化拖拽上传功能
+        function initDragAndDrop() {
+            const dropzone = document.getElementById('live2dUploadDropzone');
+            const fileInput = document.getElementById('live2dModelFile');
+            
+            if (!dropzone || !fileInput) return;
+            
+            // 点击上传区域触发文件选择
+            dropzone.addEventListener('click', function(event) {
+                event.stopPropagation();
+                event.preventDefault();
+                fileInput.click();
+            });
+            
+            // 拖拽事件
+            dropzone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.style.borderColor = '#2196f3';
+                dropzone.style.backgroundColor = '#e3f2fd';
+            });
+            
+            dropzone.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.style.borderColor = '#dee2e6';
+                dropzone.style.backgroundColor = '#f8f9fa';
+            });
+            
+            dropzone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.style.borderColor = '#dee2e6';
+                dropzone.style.backgroundColor = '#f8f9fa';
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    // 直接上传文件，不通过文件选择器
+                    uploadLive2DModel(files[0]);
+                }
+            });
+            
+            // 文件选择器变化事件 - 使用更可靠的方式
+            fileInput.addEventListener('change', function(event) {
+                event.stopPropagation();
+                event.preventDefault();
+                
+                if (this.files.length > 0) {
+                    // 直接上传文件
+                    uploadLive2DModel(this.files[0]);
+                    
+                    // 清空文件选择器，允许重复选择同一文件
+                    this.value = '';
+                }
+            });
+        }
+        // 页面加载完成后的初始化
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('页面加载完成，开始初始化...');
+            
+            // 初始化Live2D模型
+            initLive2DModel();
+            
+            // 初始化按钮状态
+            updateButtonStates();
+            
+            console.log('初始化完成');
+        });
+        // 页面加载时自动连接服务器
+        window.addEventListener('load', function() {
+            connectWebSocket();
+            initDragAndDrop();
+        });
+    </script>
+</body>
+</html>
