@@ -223,28 +223,6 @@
             color: var(--text-muted);
         }
 
-        .tts-select {
-            height: 40px;
-            padding: 0 16px;
-            border-radius: var(--radius-md);
-            border: 1px solid var(--border-subtle);
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-            font-size: 14px;
-            cursor: pointer;
-            outline: none;
-            transition: all 0.2s ease;
-        }
-
-        .tts-select:hover {
-            border-color: var(--border-accent);
-        }
-
-        .tts-select:focus {
-            border-color: var(--ai-accent);
-            box-shadow: 0 0 0 3px var(--ai-accent-glow);
-        }
-
         .tts-options {
             display: flex;
             flex-direction: column;
@@ -1179,7 +1157,7 @@
     <script>
         const live2d = PIXI.live2d;
 
-        let app, currentModel, currentModelName;
+        let app;
         
         // 主函数
         (async function main() {
@@ -2856,11 +2834,11 @@
                 });
         };
         // 加载实际的Live2D模型（使用pixi-live2d-display）
-        async function loadLive2DModel(currentModel) {
+        async function loadLive2DModel(currentLive2DModel) {
             try {
                 // 异步加载Live2D模型
-                // 把currentModel.filePath这个下划线改成/
-                const filePath = currentModel.filePath.replace('_', '/');
+                // currentLive2DModel.filePath这个下划线改成/
+                const filePath = currentLive2DModel.filePath.replace('_', '/');
                 
                 const modelUrl = `http://localhost:8000/${filePath}`;
 
@@ -2976,7 +2954,7 @@
         }
 
         // 渲染模型列表到指定元素
-        function renderModelList(models, currentModel, errorMessage = null) {
+        function renderModelList(models, currentLive2DModel, errorMessage = null) {
 
             const modelListElement = document.getElementById('live2dModelList');
             
@@ -3008,8 +2986,8 @@
             
             // 重新排序模型列表：将选择的模型放在最前面
             const sortedModels = [...models];
-            if (currentModel) {
-                const currentIndex = models.findIndex(m => m.name === currentModel.name);
+            if (currentLive2DModel) {
+                const currentIndex = models.findIndex(m => m.name === currentLive2DModel.name);
                 if (currentIndex >= 0 && currentIndex < sortedModels.length) {
                     const selectedModel = sortedModels.splice(currentIndex, 1)[0];
                     sortedModels.unshift(selectedModel);
@@ -3017,7 +2995,7 @@
             }
             
             sortedModels.forEach((model, displayIndex) => {
-                const isSelected = model.name === currentModel?.name;
+                const isSelected = model.name === currentLive2DModel?.name;
                 
                 html += `
                     <div class="model-item ${isSelected ? 'selected' : ''}" onclick="selectLive2DModel('${model.name}')">
@@ -3025,7 +3003,7 @@
                             <div style="display: flex; align-items: center; gap: 10px;">
                                 <i class="fas fa-cube" style="color: #667eea;"></i>
                                 <span class="model-name">${model.name}</span>
-                                ${displayIndex === 0 && currentModel ? '<span style="font-size: 10px; color: #28a745; margin-left: 5px;">(上次选择)</span>' : ''}
+                                ${displayIndex === 0 && currentLive2DModel ? '<span style="font-size: 10px; color: #28a745; margin-left: 5px;">(上次选择)</span>' : ''}
                             </div>
                             <button class="delete-model-btn" onclick="deleteLive2DModel('${model.name}', event)" title="删除模型">
                                 <i class="fas fa-trash"></i>
