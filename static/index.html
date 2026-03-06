@@ -1185,6 +1185,7 @@
         let currentStreamingMessage = null; // 当前正在流式更新的消息元素
         let streamingText = ''; // 流式累积的文本
         let isStreaming = false; // 是否正在流式接收中
+        let currentReplyText = ''; // 当前回复的累积文本（TTS句子）
         
         // TTS音频队列管理
         let audioQueue = []; // 音频播放队列
@@ -1309,25 +1310,45 @@
                 
                 // 流式回复开始
                 isStreaming = true;
+                currentReplyText = '';
+                pendingText = '';
+                displayedText = '';
                 streamingText = '';
                 currentStreamingMessage = createStreamingMessage();
                 // 触发Live2D动画
                 triggerLive2DAnimation('think');
-            } else if (data.type === 'llm_chunk') {
-                // 流式回复片段 - 实现打字机效果
-                if (data.chunk) {
-                    streamingText += data.chunk;
-                    if (currentStreamingMessage) {
-                        updateStreamingMessage(streamingText);
-                    }
-                    // 触发Live2D动画
-                    triggerLive2DAnimation('speak');
-                }
             } else if (data.type === 'llm_stream_end') {
+                console.log('收到 llm_stream_end', {
+                    audioQueueLength: audioQueue.length,
+                    pendingText: pendingText,
+                    displayedText: displayedText,
+                    currentReplyText: currentReplyText,
+                    typingInterval: !!typingInterval
+                });
                 // 流式回复结束
                 isStreaming = false;
-                if (currentStreamingMessage) {
-                    finalizeStreamingMessage(streamingText, data.timestamp);
+                
+                // 如果打字机停止了但还有待显示的文本，重新启动
+                if (!typingInterval && pendingText.length > 0 && currentStreamingMessage) {
+                    console.log('打字机已停止但还有文本，重新启动');
+                    startTypingEffect();
+                }
+                
+                // 只有当音频队列为空且打字机完成时才清理状态
+                if (audioQueue.length === 0 && pendingText.length === 0) {
+                    if (typingInterval) {
+                        clearInterval(typingInterval);
+                        typingInterval = null;
+                    }
+                    if (currentStreamingMessage) {
+                        const cursor = currentStreamingMessage.querySelector('.typing-cursor');
+                        if (cursor) {
+                            cursor.remove();
+                        }
+                        currentStreamingMessage.classList.remove('streaming');
+                    }
+                    currentReplyText = '';
+                    displayedText = '';
                     currentStreamingMessage = null;
                 }
                 streamingText = '';
@@ -1402,8 +1423,37 @@
             isPlayingAudio = true;
             const audioItem = audioQueue.shift();
             
-            console.log('开始播放音频队列中的音频');
+            console.log('开始播放音频队列中的音频', {
+                text: audioItem.text,
+                currentStreamingMessage: !!currentStreamingMessage,
+                pendingText: pendingText,
+                displayedText: displayedText,
+                typingInterval: !!typingInterval
+            });
             triggerLive2DAnimation('speak');
+            
+            if (audioItem.text) {
+                currentReplyText += audioItem.text;
+                if (!currentStreamingMessage) {
+                    console.log('创建新的流式消息');
+                    currentStreamingMessage = createStreamingMessage();
+                }
+                if (currentStreamingMessage) {
+                    const textSpan = currentStreamingMessage.querySelector('.streaming-text');
+                    const cursor = currentStreamingMessage.querySelector('.typing-cursor');
+                    if (textSpan) {
+                        textSpan.textContent = displayedText;
+                    }
+                    if (cursor) {
+                        cursor.remove();
+                    }
+                    
+                    pendingText += audioItem.text;
+                    if (!typingInterval) {
+                        startTypingEffect();
+                    }
+                }
+            }
             
             try {
                 const audioBytes = base64ToArrayBuffer(audioItem.audio);

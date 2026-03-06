@@ -263,6 +263,7 @@ async def handle_chat_tts_request(sentence: str, websocket: WebSocket):
             await websocket.send_json({
                 'type': 'tts_audio',
                 'audio': audio_base64,
+                'text': sentence,
                 'message': 'ChatTTS音频生成成功',
                 'timestamp': time.time()
             })
@@ -299,6 +300,7 @@ async def handle_edge_tts_request(sentence: str, websocket: WebSocket):
             await websocket.send_json({
                 'type': 'tts_audio',
                 'audio': audio_base64,
+                'text': sentence,
                 'message': 'EdgeTTS音频生成成功',
                 'timestamp': time.time()
             })
@@ -386,11 +388,6 @@ async def handle_audio_data(audio_data: bytes, client_id: str, websocket: WebSoc
                             ):
                                 llm_response += chunk
                                 sentence_buffer += chunk
-                                await websocket.send_json({
-                                    'role': 'assistant',
-                                    'type': 'llm_chunk',
-                                    'chunk': chunk
-                                })
                                 
                                 while re.search(sentence_endings, sentence_buffer):
                                     match = re.search(sentence_endings, sentence_buffer)
