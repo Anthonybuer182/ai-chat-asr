@@ -24,12 +24,9 @@ from voice_processor import VoiceProcessor
 
 # 设置模型缓存目录（在导入任何模型相关库之前）
 os.environ['MODELSCOPE_CACHE'] = './modelscope_cache'  # 魔搭社区模型缓存
-os.environ['HUGGINGFACE_HUB_CACHE'] = './huggingface_cache'  # Hugging Face模型缓存
 
-# 确保缓存目录存在
-for cache_dir in ['./modelscope_cache', './huggingface_cache']:
-    if not os.path.exists(cache_dir):
-        os.makedirs(cache_dir, exist_ok=True)
+if not os.path.exists('./modelscope_cache'):
+    os.makedirs('./modelscope_cache', exist_ok=True)
 
 # 配置日志
 logging.basicConfig(
