@@ -1301,7 +1301,6 @@
                 console.log('处理 llm_stream_start 消息');
                 
                 lastParsedEmotion = null;
-                lastParsedMotion = null;
                 
                 // 用户语音识别结果作为用户消息显示
                 if (data.text) {
@@ -1562,7 +1561,6 @@
         
         // 打字机效果
         let lastParsedEmotion = null;
-        let lastParsedMotion = null;
         
         function startTypingEffect() {
             typingInterval = setInterval(() => {
@@ -1592,16 +1590,6 @@
                         }
                     }
                     
-                    // 如果解析到新的动作标签，触发对应动作
-                    if (parsed.motion && parsed.motion !== lastParsedMotion) {
-                        lastParsedMotion = parsed.motion;
-                        const motionData = getAnimationForEmotion(parsed.motion);
-                        if (motionData) {
-                            triggerLive2DExpression(motionData.expression || motionData.expressions);
-                        }
-                        triggerLive2DAnimation(parsed.motion);
-                    }
-                    
                     // 滚动到底部
                     const messagesContainer = document.getElementById('messagesContainer');
                     if (messagesContainer) {
@@ -1629,13 +1617,6 @@
                 } else {
                     triggerLive2DAnimation(parsed.emotion);
                 }
-            }
-            if (parsed.motion) {
-                const motionData = getAnimationForEmotion(parsed.motion);
-                if (motionData) {
-                    triggerLive2DExpression(motionData.expression || motionData.expressions);
-                }
-                triggerLive2DAnimation(parsed.motion);
             }
             
             // 清理文本中的格式标签
@@ -1674,7 +1655,6 @@
             
             // 重置解析状态
             lastParsedEmotion = null;
-            lastParsedMotion = null;
         }
 
         // 添加消息到聊天界面
@@ -1745,26 +1725,19 @@
         
         function parseLive2DTags(text) {
             const emotionTagMatch = text.match(/\[EMOTION:(\w+)\]/i);
-            const motionTagMatch = text.match(/\[MOTION:(\w+)\]/i);
             
             let emotion = null;
-            let motion = null;
             
             if (emotionTagMatch) {
                 emotion = emotionTagMatch[1].toLowerCase();
-                console.log(`解析到情绪标签: ${emotion}`);
+                console.log(`[DEBUG] parseLive2DTags: 解析到情绪标签: ${emotion}`);
             }
             
-            if (motionTagMatch) {
-                motion = motionTagMatch[1].toLowerCase();
-                console.log(`解析到动作标签: ${motion}`);
-            }
-            
-            return { emotion, motion };
+            return { emotion };
         }
         
         function cleanTextTags(text) {
-            return text.replace(/\[EMOTION:\w+\]/gi, '').replace(/\[MOTION:\w+\]/gi, '').trim();
+            return text.replace(/\[EMOTION:\w+\]/gi, '').trim();
         }
         
         function triggerLive2DExpression(expressionNames) {
@@ -2924,9 +2897,9 @@
             modal.style.display = 'none';
         }
         function initLive2DModel(){
-            fetch('/api/settings/get')
+            return fetch('/api/settings/get')
                 .then(res => res.json())
-                .then(result => {
+                .then(async result => {
                     if (result.success && result.data.CURRENT_LIVE2D_MODEL) {
                         try {
                             currentLive2DModel = JSON.parse(result.data.CURRENT_LIVE2D_MODEL);
@@ -2934,12 +2907,10 @@
                             console.warn('解析后端模型数据失败:', e);
                         }
                     }
+                    await loadLive2DModel(currentLive2DModel);
                 })
                 .catch(err => {
                     console.warn('获取后端配置失败:', err);
-                })
-                .finally(() => {
-                    loadLive2DModel(currentLive2DModel);
                 });
         };
         // 加载实际的Live2D模型（使用pixi-live2d-display）
@@ -3420,17 +3391,22 @@
         // 页面加载完成后的初始化
         window.addEventListener('DOMContentLoaded', async function() {
             console.log('页面加载完成，开始初始化...');
+            console.log('[DEBUG] 开始加载模型配置...');
             
             // 先加载所有模型的配置
             await loadAllModelsConfig();
+            console.log('[DEBUG] allModelsConfig 加载完成:', Object.keys(allModelsConfig));
             
             // 初始化Live2D模型
-            initLive2DModel();
+            console.log('[DEBUG] 开始初始化 Live2D 模型...');
+            await initLive2DModel();
             
             // 初始化按钮状态
             updateButtonStates();
             
             console.log('初始化完成');
+            console.log('[DEBUG] currentModelConfig:', currentModelConfig);
+            console.log('[DEBUG] currentModelName:', currentModelName);
         });
         // 页面加载时自动连接服务器
         window.addEventListener('load', function() {
