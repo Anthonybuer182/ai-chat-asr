@@ -1300,6 +1300,9 @@
             if (data.type === 'llm_stream_start') {
                 console.log('处理 llm_stream_start 消息');
                 
+                lastParsedEmotion = null;
+                lastParsedMotion = null;
+                
                 // 用户语音识别结果作为用户消息显示
                 if (data.text) {
                     console.log('添加用户消息:', data.text);
@@ -1353,7 +1356,7 @@
                 }
                 streamingText = '';
                 // 触发Live2D动画
-                triggerLive2DAnimation('idle');
+                triggerLive2DAnimation('neutral');
             } else if (data.type === 'assistant_reply') {
                 // AI助手完整回复（非流式）
                 addMessage(data.text, 'assistant', data.timestamp);
@@ -1416,7 +1419,7 @@
         async function playNextAudio() {
             if (audioQueue.length === 0) {
                 isPlayingAudio = false;
-                triggerLive2DAnimation('idle');
+                triggerLive2DAnimation('neutral');
                 return;
             }
             
@@ -1558,6 +1561,9 @@
         }
         
         // 打字机效果
+        let lastParsedEmotion = null;
+        let lastParsedMotion = null;
+        
         function startTypingEffect() {
             typingInterval = setInterval(() => {
                 if (pendingText.length > 0 && currentStreamingMessage) {
@@ -1569,6 +1575,31 @@
                     const textSpan = currentStreamingMessage.querySelector('.streaming-text');
                     if (textSpan) {
                         textSpan.textContent = displayedText;
+                    }
+                    
+                    // 解析当前已显示文本中的Live2D标签
+                    const parsed = parseLive2DTags(displayedText);
+                    
+                    // 如果解析到新的情绪标签，同时触发表情和动作
+                    if (parsed.emotion && parsed.emotion !== lastParsedEmotion) {
+                        lastParsedEmotion = parsed.emotion;
+                        const emotionData = getAnimationForEmotion(parsed.emotion) || emotionToAnimationMap[parsed.emotion];
+                        if (emotionData) {
+                            triggerLive2DExpression(emotionData.expression || emotionData.expressions);
+                            triggerLive2DAnimation(parsed.emotion);
+                        } else {
+                            triggerLive2DAnimation(parsed.emotion);
+                        }
+                    }
+                    
+                    // 如果解析到新的动作标签，触发对应动作
+                    if (parsed.motion && parsed.motion !== lastParsedMotion) {
+                        lastParsedMotion = parsed.motion;
+                        const motionData = getAnimationForEmotion(parsed.motion);
+                        if (motionData) {
+                            triggerLive2DExpression(motionData.expression || motionData.expressions);
+                        }
+                        triggerLive2DAnimation(parsed.motion);
                     }
                     
                     // 滚动到底部
@@ -1588,7 +1619,27 @@
         function finalizeStreamingMessage(text, timestamp = null) {
             if (!currentStreamingMessage) return;
             
+            // 解析并触发Live2D标签（在清理之前）
+            const parsed = parseLive2DTags(text);
+            if (parsed.emotion) {
+                const emotionData = getAnimationForEmotion(parsed.emotion) || emotionToAnimationMap[parsed.emotion];
+                if (emotionData) {
+                    triggerLive2DExpression(emotionData.expression || emotionData.expressions);
+                    triggerLive2DAnimation(parsed.emotion);
+                } else {
+                    triggerLive2DAnimation(parsed.emotion);
+                }
+            }
+            if (parsed.motion) {
+                const motionData = getAnimationForEmotion(parsed.motion);
+                if (motionData) {
+                    triggerLive2DExpression(motionData.expression || motionData.expressions);
+                }
+                triggerLive2DAnimation(parsed.motion);
+            }
+            
             // 清理文本中的格式标签
+            text = cleanTextTags(text);
             text = cleanText(text);
             
             // 停止打字定时器
@@ -1620,6 +1671,10 @@
             if (messagesContainer) {
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             }
+            
+            // 重置解析状态
+            lastParsedEmotion = null;
+            lastParsedMotion = null;
         }
 
         // 添加消息到聊天界面
@@ -1684,9 +1739,124 @@
         }
 
         // 触发Live2D动画
-        let live2dAnimationState = 'idle';
+        let live2dAnimationState = 'neutral';
         let lipSyncAnimationId = null;
         let audioAnalyser = null;
+        
+        function parseLive2DTags(text) {
+            const emotionTagMatch = text.match(/\[EMOTION:(\w+)\]/i);
+            const motionTagMatch = text.match(/\[MOTION:(\w+)\]/i);
+            
+            let emotion = null;
+            let motion = null;
+            
+            if (emotionTagMatch) {
+                emotion = emotionTagMatch[1].toLowerCase();
+                console.log(`解析到情绪标签: ${emotion}`);
+            }
+            
+            if (motionTagMatch) {
+                motion = motionTagMatch[1].toLowerCase();
+                console.log(`解析到动作标签: ${motion}`);
+            }
+            
+            return { emotion, motion };
+        }
+        
+        function cleanTextTags(text) {
+            return text.replace(/\[EMOTION:\w+\]/gi, '').replace(/\[MOTION:\w+\]/gi, '').trim();
+        }
+        
+        const emotionToAnimationMap = {
+            'happy': {
+                expressions: ['Smile', 'Blushing', 'Happy', 'Joy', 'f01'],
+                motions: ['Happy', 'Joy', 'Epsilon_m_sp_03', 'hiyori_m06', '08', 'default']
+            },
+            'sad': {
+                expressions: ['Sad', 'Cry', 'f02'],
+                motions: ['Sad', 'Epsilon_m_sp_04', '04', 'default']
+            },
+            'angry': {
+                expressions: ['Angry', 'f01'],
+                motions: ['default', '01']
+            },
+            'surprised': {
+                expressions: ['Surprised', '02'],
+                motions: ['default', '02']
+            },
+            'neutral': {
+                expressions: ['Normal', 'Neutral', 'f01'],
+                motions: ['Idle', '00_idle', 'Epsilon_idle_01', 'hiyori_m01', 'default']
+            },
+            'thinking': {
+                expressions: ['Normal', 'Neutral'],
+                motions: ['Think', 'Epsilon_m_sp_02', 'hiyori_m05', '07', 'default']
+            },
+            'smile': {
+                expressions: ['Smile', 'Happy'],
+                motions: ['default', '03']
+            },
+            'blushing': {
+                expressions: ['Blushing', 'f01'],
+                motions: ['default', '04']
+            },
+            'greet': {
+                expressions: ['Happy', 'Smile'],
+                motions: ['Wave', 'Epsilon_m_sp_01', 'hiyori_m04', '06', '05']
+            },
+            'agree': {
+                expressions: ['Normal', 'Neutral', 'Happy'],
+                motions: ['Nod', 'Epsilon_m_05', 'hiyori_m07', '08']
+            },
+            'disagree': {
+                expressions: ['Sad', 'Normal'],
+                motions: ['Shake', 'Epsilon_shake_01', 'hiyori_m08', '07', '04']
+            },
+            'scared': {
+                expressions: ['Surprised', 'Sad'],
+                motions: ['default', '02', '04']
+            },
+            'excited': {
+                expressions: ['Happy', 'Joy', 'Smile'],
+                motions: ['Happy', 'Epsilon_m_03', 'hiyori_m06', '08', '07']
+            },
+            'question': {
+                expressions: ['Surprised', 'Neutral'],
+                motions: ['default', '02', '05', '07']
+            },
+            'cheer': {
+                expressions: ['Happy', 'Joy'],
+                motions: ['Happy', 'Epsilon_m_03', 'hiyori_m06', '08', '07']
+            },
+            'disgust': {
+                expressions: ['Angry', 'Sad'],
+                motions: ['default', '01', '04', '06']
+            },
+            'shake': {
+                expressions: ['Normal', 'Sad'],
+                motions: ['Shake', 'Epsilon_shake_01', 'hiyori_m08', '07']
+            }
+        };
+        
+        function triggerLive2DExpression(expressionNames) {
+            if (!live2dModel || !expressionNames || !expressionNames.length) {
+                return;
+            }
+            
+            for (const expr of expressionNames) {
+                try {
+                    if (live2dModel.expression && typeof live2dModel.expression === 'function') {
+                        live2dModel.expression(expr);
+                        console.log(`播放表情: ${expr}`);
+                        return;
+                    }
+                } catch (e) {
+                    console.log(`表情 ${expr} 不存在，尝试下一个`);
+                    continue;
+                }
+            }
+            console.log('无可用表情');
+        }
         
         function triggerLive2DAnimation(animationType) {
             if (!live2dModel) {
@@ -1718,16 +1888,16 @@
                     }
                 }
                 
-            } else if (animationType === 'idle') {
+            } else if (animationType === 'neutral') {
                 stopLipSync();
-                const idleMotions = ['Idle', 'default'];
+                const neutralMotions = ['Neutral', 'neutral', 'Idle', 'default'];
                 let motionFound = false;
                 
-                for (const motion of idleMotions) {
+                for (const motion of neutralMotions) {
                     try {
                         live2dModel.motion(motion);
                         motionFound = true;
-                        console.log(`播放空闲动画: ${motion}`);
+                        console.log(`播放待机动画: ${motion}`);
                         break;
                     } catch (e) {
                         continue;
@@ -1781,6 +1951,132 @@
                 let motionFound = false;
                 
                 for (const motion of happyMotions) {
+                    try {
+                        live2dModel.motion(motion);
+                        motionFound = true;
+                        break;
+                    } catch (e) {
+                        continue;
+                    }
+                }
+                
+            } else if (animationType === 'wave') {
+                const waveMotions = ['Wave', 'wave', '01', '06', 'Epsilon_m_sp_01'];
+                let motionFound = false;
+                
+                for (const motion of waveMotions) {
+                    try {
+                        live2dModel.motion(motion);
+                        motionFound = true;
+                        break;
+                    } catch (e) {
+                        continue;
+                    }
+                }
+                
+            } else if (animationType === 'nod') {
+                const nodMotions = ['Nod', 'nod', 'hiyori_m07', 'Epsilon_m_05'];
+                let motionFound = false;
+                
+                for (const motion of nodMotions) {
+                    try {
+                        live2dModel.motion(motion);
+                        motionFound = true;
+                        break;
+                    } catch (e) {
+                        continue;
+                    }
+                }
+                
+            } else if (animationType === 'shake') {
+                const shakeMotions = ['Shake', 'shake', 'hiyori_m08', 'Epsilon_shake_01'];
+                let motionFound = false;
+                
+                for (const motion of shakeMotions) {
+                    try {
+                        live2dModel.motion(motion);
+                        motionFound = true;
+                        break;
+                    } catch (e) {
+                        continue;
+                    }
+                }
+                
+            } else if (animationType === 'surprised') {
+                const surprisedMotions = ['Surprised', 'surprised', '02', 'default'];
+                let motionFound = false;
+                
+                for (const motion of surprisedMotions) {
+                    try {
+                        live2dModel.motion(motion);
+                        motionFound = true;
+                        break;
+                    } catch (e) {
+                        continue;
+                    }
+                }
+                
+            } else if (animationType === 'thinking') {
+                const thinkingMotions = ['Think', 'think', 'Epsilon_m_sp_02', 'hiyori_m05'];
+                let motionFound = false;
+                
+                for (const motion of thinkingMotions) {
+                    try {
+                        live2dModel.motion(motion);
+                        motionFound = true;
+                        break;
+                    } catch (e) {
+                        continue;
+                    }
+                }
+                
+            } else if (animationType === 'smile') {
+                const smileMotions = ['Smile', 'smile', '03', 'default'];
+                let motionFound = false;
+                
+                for (const motion of smileMotions) {
+                    try {
+                        live2dModel.motion(motion);
+                        motionFound = true;
+                        break;
+                    } catch (e) {
+                        continue;
+                    }
+                }
+                
+            } else if (animationType === 'blushing') {
+                const blushingMotions = ['Blushing', 'blushing', '04', 'default'];
+                let motionFound = false;
+                
+                for (const motion of blushingMotions) {
+                    try {
+                        live2dModel.motion(motion);
+                        motionFound = true;
+                        break;
+                    } catch (e) {
+                        continue;
+                    }
+                }
+                
+            } else if (animationType === 'angry') {
+                const angryMotions = ['Angry', 'angry', 'default'];
+                let motionFound = false;
+                
+                for (const motion of angryMotions) {
+                    try {
+                        live2dModel.motion(motion);
+                        motionFound = true;
+                        break;
+                    } catch (e) {
+                        continue;
+                    }
+                }
+                
+            } else if (animationType === 'neutral') {
+                const neutralMotions = ['Neutral', 'neutral', 'Idle', 'default'];
+                let motionFound = false;
+                
+                for (const motion of neutralMotions) {
                     try {
                         live2dModel.motion(motion);
                         motionFound = true;
@@ -1895,7 +2191,7 @@
             }
             
             // 重置Live2D状态
-            triggerLive2DAnimation('idle');
+            triggerLive2DAnimation('neutral');
         }
 
         // 删除单条消息
@@ -2851,6 +3147,8 @@
         let currentLive2DModel = null;
         let live2dModels = [];
         let live2dModel = null;
+        let currentModelConfig = null;
+        let currentModelName = null;
 
         // 打开Live2D模型选择弹框
         function openLive2DModelModal() {
@@ -2944,9 +3242,37 @@
                 });
                 
                 console.log('Live2D模型加载完成！');
+                
+                currentModelName = currentLive2DModel.name;
+                await loadModelConfig(currentModelName);
             } catch (error) {
                 console.error('Live2D模型加载失败:', error);
             }
+        }
+        
+        async function loadModelConfig(modelName) {
+            try {
+                const response = await fetch(`http://localhost:8000/api/live2d/model-config/${modelName}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentModelConfig = result.config;
+                    console.log(`模型 ${modelName} 配置加载成功:`, currentModelConfig);
+                } else {
+                    console.warn(`模型 ${modelName} 配置加载失败:`, result.message);
+                    currentModelConfig = null;
+                }
+            } catch (error) {
+                console.error('加载模型配置失败:', error);
+                currentModelConfig = null;
+            }
+        }
+        
+        function getAnimationForEmotion(emotion) {
+            if (!currentModelConfig || !currentModelConfig[emotion]) {
+                return null;
+            }
+            return currentModelConfig[emotion];
         }
         // 加载Live2D模型列表
         async function loadLive2DModels() {
@@ -2966,6 +3292,10 @@
                         } catch (e) {
                             console.warn('解析后端模型数据失败:', e);
                         }
+                    }
+                    
+                    if (currentLive2DModel && currentLive2DModel.name) {
+                        await loadModelConfig(currentLive2DModel.name);
                     }
                     
                     renderModelList(live2dModels, currentLive2DModel);
@@ -2998,6 +3328,9 @@
                 renderModelList(live2dModels, currentLive2DModel);
                 
                 loadLive2DModel(currentLive2DModel);
+                
+                currentModelName = modelName;
+                loadModelConfig(modelName);
 
                 closeLive2DModelModal();
             }

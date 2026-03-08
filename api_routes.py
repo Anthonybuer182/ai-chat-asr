@@ -419,6 +419,59 @@ async def get_live2d_models():
             "message": f"获取Live2D模型列表失败: {str(e)}"
         }
 
+@api_router.get("/live2d/model-config/{model_name}", summary="获取Live2D模型动画配置")
+async def get_live2d_model_config(model_name: str):
+    """获取Live2D模型的动画配置"""
+    try:
+        if not voice_processor or not voice_processor.model_dict:
+            return {
+                "success": False,
+                "message": "模型配置未加载"
+            }
+        
+        models_config = voice_processor.model_dict.get("models", {})
+        model_config = models_config.get(model_name)
+        
+        if not model_config:
+            return {
+                "success": False,
+                "message": f"未找到模型 {model_name} 的配置"
+            }
+        
+        return {
+            "success": True,
+            "model_name": model_name,
+            "config": model_config
+        }
+    except Exception as e:
+        logger.error(f"获取Live2D模型配置失败: {e}")
+        return {
+            "success": False,
+            "message": f"获取模型配置失败: {str(e)}"
+        }
+
+@api_router.get("/live2d/all-config", summary="获取所有Live2D模型动画配置")
+async def get_all_live2d_model_config():
+    """获取所有Live2D模型的动画配置"""
+    try:
+        if not voice_processor or not voice_processor.model_dict:
+            return {
+                "success": False,
+                "message": "模型配置未加载"
+            }
+        
+        return {
+            "success": True,
+            "models": voice_processor.model_dict.get("models", {}),
+            "default_model": voice_processor.model_dict.get("default_model", "Epsilon")
+        }
+    except Exception as e:
+        logger.error(f"获取Live2D模型配置失败: {e}")
+        return {
+            "success": False,
+            "message": f"获取模型配置失败: {str(e)}"
+        }
+
 @api_router.delete("/live2d/models/{model_name}", summary="删除Live2D模型")
 async def delete_live2d_model(model_name: str):
     """删除Live2D模型"""
