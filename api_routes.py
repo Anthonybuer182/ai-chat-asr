@@ -423,13 +423,18 @@ async def get_live2d_models():
 async def get_live2d_model_config(model_name: str):
     """获取Live2D模型的动画配置"""
     try:
-        if not voice_processor or not voice_processor.model_dict:
+        model_dict_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "model_dict.json")
+        
+        if not os.path.exists(model_dict_path):
             return {
                 "success": False,
-                "message": "模型配置未加载"
+                "message": "模型配置文件不存在"
             }
         
-        models_config = voice_processor.model_dict.get("models", {})
+        with open(model_dict_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        models_config = data.get("models", {})
         model_config = models_config.get(model_name)
         
         if not model_config:
@@ -454,16 +459,21 @@ async def get_live2d_model_config(model_name: str):
 async def get_all_live2d_model_config():
     """获取所有Live2D模型的动画配置"""
     try:
-        if not voice_processor or not voice_processor.model_dict:
+        model_dict_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "model_dict.json")
+        
+        if not os.path.exists(model_dict_path):
             return {
                 "success": False,
-                "message": "模型配置未加载"
+                "message": "模型配置文件不存在"
             }
+        
+        with open(model_dict_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
         
         return {
             "success": True,
-            "models": voice_processor.model_dict.get("models", {}),
-            "default_model": voice_processor.model_dict.get("default_model", "Epsilon")
+            "models": data.get("models", {}),
+            "default_model": data.get("default_model", "Epsilon")
         }
     except Exception as e:
         logger.error(f"获取Live2D模型配置失败: {e}")

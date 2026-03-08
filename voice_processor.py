@@ -14,8 +14,6 @@ import edge_tts
 
 logger = logging.getLogger(__name__)
 
-MODEL_DICT_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "model_dict.json")
-
 LIVE2D_SYSTEM_PROMPT = """你是一个可爱的虚拟助手，拥有丰富的情感和肢体语言表达能力。
 
 ## 你的输出规范
@@ -105,8 +103,6 @@ class VoiceProcessor:
         self.keyword_wakeup_model = None
         self.is_initialized = False
         self.initialization_lock = asyncio.Lock()
-        self.model_dict = self._load_model_dict()
-        self.current_model_name = settings.CURRENT_LIVE2D_MODEL or "Epsilon"
         
         self.vad_config = {
             'threshold': 0.3,
@@ -155,47 +151,6 @@ class VoiceProcessor:
         self._last_process_time = current_time
         
         return False
-
-    def _load_model_dict(self) -> Dict[str, Any]:
-        """加载Live2D模型映射配置"""
-        try:
-            if os.path.exists(MODEL_DICT_PATH):
-                with open(MODEL_DICT_PATH, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                logger.info(f"✅ Live2D模型映射配置加载成功: {MODEL_DICT_PATH}")
-                return data
-            else:
-                logger.warning(f"⚠️ 模型映射配置文件不存在: {MODEL_DICT_PATH}")
-                return self._get_default_model_dict()
-        except Exception as e:
-            logger.error(f"❌ 加载模型映射配置失败: {e}")
-            return self._get_default_model_dict()
-
-    def _get_default_model_dict(self) -> Dict[str, Any]:
-        """获取默认的模型映射配置"""
-        return {
-            "_version": "1.0.0",
-            "default_model": "Epsilon",
-            "fallback": {"emotion": "neutral", "motion": "default"},
-            "emotion_mapping": {},
-            "motion_mapping": {}
-        }
-
-    def get_model_config(self) -> Dict[str, Any]:
-        """获取当前Live2D模型的配置"""
-        if not self.model_dict:
-            return {}
-        
-        models = self.model_dict.get("models", {})
-        return models.get(self.current_model_name, {})
-
-    def get_emotion_mapping(self) -> Dict[str, Any]:
-        """获取情绪映射配置"""
-        return self.model_dict.get("emotion_mapping", {})
-
-    def get_motion_mapping(self) -> Dict[str, Any]:
-        """获取动作映射配置"""
-        return self.model_dict.get("motion_mapping", {})
 
     async def initialize_models(self):
         """初始化所有语音处理模型"""
