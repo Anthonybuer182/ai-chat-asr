@@ -423,7 +423,7 @@ async def get_live2d_models():
 async def get_live2d_model_config(model_name: str):
     """获取Live2D模型的动画配置"""
     try:
-        model_dict_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "model_dict.json")
+        model_dict_path = os.path.join(os.path.dirname(__file__), "model_dict.json")
         
         if not os.path.exists(model_dict_path):
             return {
@@ -459,7 +459,7 @@ async def get_live2d_model_config(model_name: str):
 async def get_all_live2d_model_config():
     """获取所有Live2D模型的动画配置"""
     try:
-        model_dict_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "model_dict.json")
+        model_dict_path = os.path.join(os.path.dirname(__file__), "model_dict.json")
         
         if not os.path.exists(model_dict_path):
             return {
