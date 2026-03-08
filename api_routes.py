@@ -473,7 +473,6 @@ async def get_all_live2d_model_config():
         return {
             "success": True,
             "models": data.get("models", {}),
-            "default_model": data.get("default_model", "Epsilon")
         }
     except Exception as e:
         logger.error(f"获取Live2D模型配置失败: {e}")

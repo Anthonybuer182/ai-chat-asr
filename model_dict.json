@@ -440,6 +440,5 @@
         "motion": ["04"]
       }
     }
-  },
-  "default_model": "Epsilon"
+  }
 }

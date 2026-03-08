@@ -2882,7 +2882,6 @@
         let currentModelConfig = null;
         let currentModelName = null;
         let allModelsConfig = {}; // 所有模型的配置缓存
-        let defaultModelName = 'Epsilon'; // 默认模型名称
 
         // 打开Live2D模型选择弹框
         function openLive2DModelModal() {
@@ -3005,12 +3004,7 @@
                     console.log(`模型 ${modelName} 配置加载成功`);
                 } else {
                     console.warn(`模型 ${modelName} 配置加载失败: ${result.message}`);
-                    // 尝试使用默认模型配置
-                    if (modelName !== defaultModelName) {
-                        await loadModelConfig(defaultModelName);
-                    } else {
-                        currentModelConfig = null;
-                    }
+                    currentModelConfig = null;
                 }
             } catch (error) {
                 console.error('加载模型配置失败:', error);
@@ -3028,7 +3022,6 @@
                 
                 if (result.success) {
                     allModelsConfig = result.models || {};
-                    defaultModelName = result.default_model || 'Epsilon';
                     console.log('所有模型配置加载成功:', Object.keys(allModelsConfig));
                 } else {
                     console.warn(`加载所有模型配置失败: ${result.message}`);
