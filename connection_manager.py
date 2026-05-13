@@ -13,10 +13,9 @@ class ConnectionManager:
     def __init__(self):
         self.active_connections: Dict[str, WebSocket] = {}
         self.user_data: Dict[str, Dict[str, Any]] = {}
-        self.interrupt_flags: Dict[str, bool] = {}  # 中断标志
-        self.current_tts_tasks: Dict[str, asyncio.Task] = {}  # 当前TTS任务
-        self.audio_processing_lock: Dict[str, asyncio.Lock] = {}  # 音频处理锁
-        self._shutting_down = False  # 添加关闭标志
+        self.interrupt_flags: Dict[str, bool] = {}
+        self.current_tts_tasks: Dict[str, asyncio.Task] = {}
+        self._shutting_down = False
 
     async def connect(self, websocket: WebSocket, client_id: str):
         """建立WebSocket连接"""
@@ -34,15 +33,12 @@ class ConnectionManager:
             'last_activity': time.time(),
             'voiceprint': None,
             'wakeup_detected': False,
-            'interrupt_enabled': True,  # 启用语音打断
-            'keyword_wakeup_enabled': False,  # 默认关闭关键词唤醒
-            'voiceprint_match_enabled': False,  # 默认关闭声纹匹配
-            'vad_sensitivity': 0.3,  # VAD灵敏度
+            'interrupt_enabled': True,
+            'vad_sensitivity': 0.3,
             'interrupt_threshold': 0.6,  # 打断阈值
             'conversation_state': 'idle'  # 对话状态: idle, listening, speaking, interrupted
         }
         self.interrupt_flags[client_id] = False
-        self.audio_processing_lock[client_id] = asyncio.Lock()
         logger.info(f"客户端 {client_id} 已连接")
 
     def disconnect(self, client_id: str):
@@ -67,24 +63,6 @@ class ConnectionManager:
         """更新客户端活动时间"""
         if client_id in self.user_data:
             self.user_data[client_id]['last_activity'] = time.time()
-
-    def get_inactive_clients(self, timeout: int = 300) -> List[str]:
-        """获取超时未活动的客户端"""
-        current_time = time.time()
-        inactive_clients = []
-        
-        for client_id, data in self.user_data.items():
-            if current_time - data['last_activity'] > timeout:
-                inactive_clients.append(client_id)
-        
-        return inactive_clients
-
-    async def cleanup_inactive_clients(self, timeout: int = 300):
-        """清理超时未活动的客户端"""
-        inactive_clients = self.get_inactive_clients(timeout)
-        for client_id in inactive_clients:
-            logger.info(f"清理超时客户端: {client_id}")
-            self.disconnect(client_id)
 
     async def set_interrupt_flag(self, client_id: str, interrupt: bool = True):
         """设置中断标志"""

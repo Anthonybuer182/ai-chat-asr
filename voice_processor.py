@@ -552,19 +552,6 @@ class VoiceProcessor:
             logger.info("使用备用TTS方案")
             return True
 
-    async def _init_edge_tts(self):
-        """初始化 EdgeTTS（异步方法，用于检查连接性）"""
-        try:
-            import edge_tts
-            voices = await edge_tts.list_voices()
-            zh_voices = [v for v in voices if v['Locale'].startswith('zh-')]
-            logger.info(f"EdgeTTS 可用语音数量: {len(zh_voices)}")
-            logger.info(f"EdgeTTS 默认语音: {self.edge_tts_voice}")
-            return True
-        except Exception as e:
-            logger.error(f"EdgeTTS 初始化失败: {e}")
-            return False
-
     async def generate_edge_tts(self, text: str) -> Optional[bytes]:
         """使用 EdgeTTS 生成语音"""
         try:
@@ -801,55 +788,3 @@ class VoiceProcessor:
             logger.error(f"声纹特征提取失败: {e}")
             return None
 
-    async def voiceprint_match(self, audio_data: bytes, client_id: str, 
-                              stored_voiceprint: Any = None) -> Dict[str, Any]:
-        """声纹匹配"""
-        try:
-            if not stored_voiceprint:
-                logger.info(f"客户端 {client_id} 未注册声纹，跳过声纹匹配")
-                return {"match": True, "confidence": 1.0, "message": "未注册声纹，跳过匹配"}
-            
-            if not self.voiceprint_model:
-                logger.warning("声纹模型未初始化，跳过声纹匹配")
-                return {"match": True, "confidence": 1.0, "message": "声纹模型未初始化，跳过匹配"}
-            
-            current_feature = await self.extract_voiceprint_feature(audio_data)
-            
-            if not current_feature:
-                logger.warning("无法提取当前音频的声纹特征")
-                return {"match": False, "confidence": 0.0, "message": "声纹特征提取失败"}
-            
-            similarity_score = await self.calculate_similarity(stored_voiceprint, current_feature)
-            
-            match_threshold = 0.7
-            is_match = similarity_score >= match_threshold
-            
-            logger.info(f"声纹匹配结果: 相似度={similarity_score:.3f}, 匹配={is_match}")
-            
-            return {
-                "match": is_match,
-                "confidence": similarity_score,
-                "message": f"声纹匹配{'成功' if is_match else '失败'} (相似度: {similarity_score:.3f})"
-            }
-            
-        except Exception as e:
-            logger.error(f"声纹匹配失败: {e}")
-            return {"match": False, "confidence": 0.0, "message": f"声纹匹配过程出错: {str(e)}"}
-
-    async def calculate_similarity(self, feature1: Any, feature2: Any) -> float:
-        """计算声纹特征相似度（简化实现）"""
-        import random
-        return random.uniform(0.5, 0.95)
-
-    def update_vad_threshold(self, threshold: float):
-        """更新VAD检测阈值"""
-        self.vad_config['threshold'] = max(0.1, min(0.9, threshold))
-        logger.info(f"VAD阈值已更新: {self.vad_config['threshold']}")
-
-    def get_vad_statistics(self) -> Dict[str, Any]:
-        """获取VAD统计信息"""
-        return {
-            'config': self.vad_config.copy(),
-            'state': self.vad_state.copy(),
-            'initialized': self.is_initialized
-        }

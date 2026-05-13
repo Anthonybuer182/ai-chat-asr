@@ -131,42 +131,8 @@ async def handle_control_command(text_message: Dict[str, Any], client_id: str, w
             'timestamp': time.time()
         })
     
-    elif command == 'enable_keyword_wakeup':
-        manager.user_data[client_id]['keyword_wakeup_enabled'] = True
-        await websocket.send_json({
-            'type': 'keyword_wakeup_enabled',
-            'message': '关键词唤醒功能已启用',
-            'timestamp': time.time()
-        })
-    
-    elif command == 'disable_keyword_wakeup':
-        manager.user_data[client_id]['keyword_wakeup_enabled'] = False
-        await websocket.send_json({
-            'type': 'keyword_wakeup_disabled',
-            'message': '关键词唤醒功能已禁用',
-            'timestamp': time.time()
-        })
-    
-    elif command == 'enable_voiceprint_match':
-        manager.user_data[client_id]['voiceprint_match_enabled'] = True
-        await websocket.send_json({
-            'type': 'voiceprint_match_enabled',
-            'message': '声纹匹配功能已启用',
-            'timestamp': time.time()
-        })
-    
-    elif command == 'disable_voiceprint_match':
-        manager.user_data[client_id]['voiceprint_match_enabled'] = False
-        await websocket.send_json({
-            'type': 'voiceprint_match_disabled',
-            'message': '声纹匹配功能已禁用',
-            'timestamp': time.time()
-        })
-    
     elif command == 'delete_message':
         message_index = text_message.get('index')
-        message_type = text_message.get('type')
-        
         conversation_history = manager.user_data[client_id].get('conversation_history', [])
         
         if message_index is not None and 0 <= message_index < len(conversation_history):
@@ -449,5 +415,4 @@ async def handle_audio_data(audio_data: bytes, client_id: str, websocket: WebSoc
             logger.error(f"ASR处理错误 - 客户端 {client_id}: {e}")
     
     except Exception as e:
-        logger.error(f"处理音频数据错误 - 客户端 {client_id}: {e}")
         logger.error(f"处理音频数据错误 - 客户端 {client_id}: {e}")
