@@ -119,38 +119,6 @@ class VoiceProcessor:
             'silence_counter': 0,
             'speech_chunks_in_current_segment': 0
         }
-        
-        # 重复音频检测
-        self._last_audio_hash = None
-        self._last_process_time = 0
-        self._duplicate_threshold = 0.5  # 相同内容处理间隔阈值（秒）
-
-    def _calculate_audio_hash(self, audio_data: bytes) -> str:
-        """计算音频数据的简单哈希值"""
-        try:
-            import hashlib
-            return hashlib.md5(audio_data).hexdigest()
-        except:
-            return str(len(audio_data))
-
-    def _is_duplicate_audio(self, audio_data: bytes) -> bool:
-        """检测是否为重复音频"""
-        current_time = time.time()
-        
-        # 检查时间间隔
-        if current_time - self._last_process_time < self._duplicate_threshold:
-            return True
-        
-        # 检查内容是否相同
-        current_hash = self._calculate_audio_hash(audio_data)
-        if current_hash == self._last_audio_hash:
-            return True
-        
-        # 更新状态
-        self._last_audio_hash = current_hash
-        self._last_process_time = current_time
-        
-        return False
 
     async def initialize_models(self):
         """初始化所有语音处理模型"""
@@ -303,20 +271,6 @@ class VoiceProcessor:
                 clean_audio=None,
                 speech_segments=[],
                 avg_confidence=0.0
-            )
-        
-        # 检测重复音频
-        if self._is_duplicate_audio(audio_data):
-            if client_id:
-                logger.debug(f"VAD检测：客户端 {client_id} 检测到重复音频，跳过处理")
-            return VADResult(
-                has_speech=False,
-                speech_audio=None,
-                clean_audio=None,
-                speech_segments=[],
-                avg_confidence=0.0,
-                is_speech_start=False,
-                is_speech_end=False
             )
         
         try:

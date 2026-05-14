@@ -4,86 +4,103 @@
       "path": "Epsilon/runtime/Epsilon.model3.json",
       "happy": {
         "description": "开心",
+        "priority": 2,
         "expression": ["Smile", "Blushing", "f01"],
         "motion": ["Epsilon_m_sp_03", "Epsilon_m_03"]
       },
       "sad": {
         "description": "伤心",
+        "priority": 2,
         "expression": ["Sad", "f02"],
         "motion": ["Epsilon_m_sp_04", "Epsilon_m_04"]
       },
       "angry": {
         "description": "生气",
+        "priority": 3,
         "expression": ["Angry"],
         "motion": ["Epsilon_m_06", "Epsilon_m_01"]
       },
       "surprised": {
         "description": "惊讶",
+        "priority": 3,
         "expression": ["Surprised"],
         "motion": ["Epsilon_m_02"]
       },
       "neutral": {
         "description": "中性/待机",
+        "priority": 1,
         "expression": ["Normal", "f01"],
-        "motion": ["Epsilon_idle_01"]
+        "motion": ["Epsilon_idle_01", "Epsilon_m_01", "Epsilon_m_02"]
       },
       "thinking": {
         "description": "思考",
+        "priority": 2,
         "expression": ["Normal"],
         "motion": ["Epsilon_m_sp_02", "Epsilon_m_02"]
       },
       "smile": {
         "description": "微笑",
+        "priority": 2,
         "expression": ["Smile"],
-        "motion": ["Epsilon_m_03"]
+        "motion": ["Epsilon_m_03", "Epsilon_m_sp_03"]
       },
       "blushing": {
         "description": "脸红",
+        "priority": 2,
         "expression": ["Blushing"],
         "motion": ["Epsilon_m_sp_03"]
       },
       "greet": {
         "description": "打招呼",
+        "priority": 2,
         "expression": ["Smile"],
         "motion": ["Epsilon_m_sp_01", "Epsilon_m_01"]
       },
       "agree": {
         "description": "赞同/点头",
+        "priority": 2,
         "expression": ["Normal"],
         "motion": ["Epsilon_m_05"]
       },
       "disagree": {
         "description": "否定/摇头",
+        "priority": 2,
         "expression": ["Sad"],
         "motion": ["Epsilon_shake_01"]
       },
       "scared": {
         "description": "害怕",
+        "priority": 3,
         "expression": ["Surprised"],
         "motion": ["Epsilon_m_02"]
       },
       "excited": {
         "description": "兴奋",
+        "priority": 3,
         "expression": ["Happy"],
-        "motion": ["Epsilon_m_03"]
+        "motion": ["Epsilon_m_03", "Epsilon_m_sp_03"]
       },
       "question": {
         "description": "疑问",
+        "priority": 2,
         "expression": ["Surprised"],
         "motion": ["Epsilon_m_sp_02", "Epsilon_m_02"]
       },
       "cheer": {
         "description": "欢呼",
+        "priority": 3,
         "expression": ["Happy"],
-        "motion": ["Epsilon_m_03"]
+        "motion": ["Epsilon_m_03", "Epsilon_m_sp_03"]
       },
       "disgust": {
         "description": "厌恶",
+        "priority": 2,
         "expression": ["Angry"],
         "motion": ["Epsilon_m_06", "Epsilon_m_01"]
       },
       "shake": {
         "description": "摇头",
+        "priority": 2,
         "expression": ["Sad"],
         "motion": ["Epsilon_shake_01"]
       }
@@ -92,86 +109,103 @@
       "path": "hijiki/runtime/hijiki.model3.json",
       "happy": {
         "description": "开心",
+        "priority": 2,
         "expression": ["Happy"],
         "motion": ["08"]
       },
       "sad": {
         "description": "伤心",
+        "priority": 2,
         "expression": ["Sad"],
         "motion": ["04"]
       },
       "neutral": {
         "description": "中性/待机",
+        "priority": 1,
         "expression": ["Neutral"],
-        "motion": ["00_idle"]
+        "motion": ["00_idle", "06", "07"]
       },
       "thinking": {
         "description": "思考",
+        "priority": 2,
         "expression": ["Neutral"],
         "motion": ["07"]
       },
       "smile": {
         "description": "微笑",
+        "priority": 2,
         "expression": ["Happy"],
         "motion": ["06"]
       },
       "blushing": {
         "description": "脸红",
+        "priority": 2,
         "expression": ["Happy"],
         "motion": ["06"]
       },
       "angry": {
         "description": "生气",
+        "priority": 3,
         "expression": ["Sad"],
         "motion": ["04"]
       },
       "surprised": {
         "description": "惊讶",
+        "priority": 3,
         "expression": ["Neutral"],
         "motion": ["07"]
       },
       "shake": {
         "description": "摇头",
+        "priority": 2,
         "expression": ["Sad"],
         "motion": ["04"]
       },
       "greet": {
         "description": "打招呼",
+        "priority": 2,
         "expression": ["Happy"],
         "motion": ["06"]
       },
       "agree": {
         "description": "赞同/点头",
+        "priority": 2,
         "expression": ["Happy"],
         "motion": ["08"]
       },
       "disagree": {
         "description": "否定/摇头",
+        "priority": 2,
         "expression": ["Sad"],
         "motion": ["04"]
       },
       "scared": {
         "description": "害怕",
+        "priority": 3,
         "expression": ["Sad"],
         "motion": ["04"]
       },
       "excited": {
         "description": "兴奋",
+        "priority": 3,
         "expression": ["Happy"],
         "motion": ["08"]
       },
       "question": {
         "description": "疑问",
+        "priority": 2,
         "expression": ["Neutral"],
         "motion": ["07"]
       },
       "cheer": {
         "description": "欢呼",
+        "priority": 3,
         "expression": ["Happy"],
         "motion": ["08"]
       },
       "disgust": {
         "description": "厌恶",
+        "priority": 2,
         "expression": ["Sad"],
         "motion": ["04"]
       }
@@ -180,86 +214,103 @@
       "path": "hiyori_pro_zh/runtime/hiyori_pro_t11.model3.json",
       "happy": {
         "description": "开心",
+        "priority": 2,
         "expression": ["Happy"],
         "motion": ["hiyori_m06"]
       },
       "sad": {
         "description": "伤心",
+        "priority": 2,
         "expression": ["Sad"],
         "motion": ["hiyori_m03"]
       },
       "neutral": {
         "description": "中性/待机",
+        "priority": 1,
         "expression": ["Neutral"],
-        "motion": ["hiyori_m01"]
+        "motion": ["hiyori_m01", "hiyori_m02", "hiyori_m07"]
       },
       "thinking": {
         "description": "思考",
+        "priority": 2,
         "expression": ["Neutral"],
         "motion": ["hiyori_m05"]
       },
       "smile": {
         "description": "微笑",
+        "priority": 2,
         "expression": ["Happy"],
         "motion": ["hiyori_m06"]
       },
       "blushing": {
         "description": "脸红",
+        "priority": 2,
         "expression": ["Happy"],
         "motion": ["hiyori_m06"]
       },
       "angry": {
         "description": "生气",
+        "priority": 3,
         "expression": ["Sad"],
         "motion": ["hiyori_m03"]
       },
       "surprised": {
         "description": "惊讶",
+        "priority": 3,
         "expression": ["Surprised"],
         "motion": ["hiyori_m05"]
       },
       "shake": {
         "description": "摇头",
+        "priority": 2,
         "expression": ["Sad"],
         "motion": ["hiyori_m08"]
       },
       "greet": {
         "description": "打招呼",
+        "priority": 2,
         "expression": ["Happy"],
         "motion": ["hiyori_m04"]
       },
       "agree": {
         "description": "赞同/点头",
+        "priority": 2,
         "expression": ["Neutral"],
         "motion": ["hiyori_m07"]
       },
       "disagree": {
         "description": "否定/摇头",
+        "priority": 2,
         "expression": ["Sad"],
         "motion": ["hiyori_m08"]
       },
       "scared": {
         "description": "害怕",
+        "priority": 3,
         "expression": ["Surprised"],
         "motion": ["hiyori_m05"]
       },
       "excited": {
         "description": "兴奋",
+        "priority": 3,
         "expression": ["Happy"],
-        "motion": ["hiyori_m06"]
+        "motion": ["hiyori_m06", "hiyori_m04"]
       },
       "question": {
         "description": "疑问",
+        "priority": 2,
         "expression": ["Surprised"],
         "motion": ["hiyori_m05"]
       },
       "cheer": {
         "description": "欢呼",
+        "priority": 3,
         "expression": ["Happy"],
-        "motion": ["hiyori_m06"]
+        "motion": ["hiyori_m06", "hiyori_m04"]
       },
       "disgust": {
         "description": "厌恶",
+        "priority": 2,
         "expression": ["Sad"],
         "motion": ["hiyori_m03"]
       }
@@ -268,86 +319,103 @@
       "path": "tororo/runtime/tororo.model3.json",
       "happy": {
         "description": "开心",
+        "priority": 2,
         "expression": ["Happy"],
         "motion": ["07"]
       },
       "sad": {
         "description": "伤心",
+        "priority": 2,
         "expression": ["Sad"],
         "motion": ["04"]
       },
       "neutral": {
         "description": "中性/待机",
+        "priority": 1,
         "expression": ["Neutral"],
-        "motion": ["00_idle"]
+        "motion": ["00_idle", "05", "06"]
       },
       "thinking": {
         "description": "思考",
+        "priority": 2,
         "expression": ["Neutral"],
         "motion": ["06"]
       },
       "smile": {
         "description": "微笑",
+        "priority": 2,
         "expression": ["Happy"],
         "motion": ["05"]
       },
       "blushing": {
         "description": "脸红",
+        "priority": 2,
         "expression": ["Happy"],
         "motion": ["05"]
       },
       "angry": {
         "description": "生气",
+        "priority": 3,
         "expression": ["Sad"],
         "motion": ["04"]
       },
       "surprised": {
         "description": "惊讶",
+        "priority": 3,
         "expression": ["Neutral"],
         "motion": ["06"]
       },
       "shake": {
         "description": "摇头",
+        "priority": 2,
         "expression": ["Sad"],
         "motion": ["04"]
       },
       "greet": {
         "description": "打招呼",
+        "priority": 2,
         "expression": ["Happy"],
         "motion": ["05"]
       },
       "agree": {
         "description": "赞同/点头",
+        "priority": 2,
         "expression": ["Happy"],
         "motion": ["07"]
       },
       "disagree": {
         "description": "否定/摇头",
+        "priority": 2,
         "expression": ["Sad"],
         "motion": ["04"]
       },
       "scared": {
         "description": "害怕",
+        "priority": 3,
         "expression": ["Sad"],
         "motion": ["04"]
       },
       "excited": {
         "description": "兴奋",
+        "priority": 3,
         "expression": ["Happy"],
-        "motion": ["07"]
+        "motion": ["07", "05"]
       },
       "question": {
         "description": "疑问",
+        "priority": 2,
         "expression": ["Neutral"],
         "motion": ["06"]
       },
       "cheer": {
         "description": "欢呼",
+        "priority": 3,
         "expression": ["Happy"],
-        "motion": ["07"]
+        "motion": ["07", "05"]
       },
       "disgust": {
         "description": "厌恶",
+        "priority": 2,
         "expression": ["Sad"],
         "motion": ["04"]
       }
@@ -356,86 +424,103 @@
       "path": "shizuku/runtime/shizuku.model3.json",
       "happy": {
         "description": "开心",
+        "priority": 2,
         "expression": ["Happy"],
         "motion": ["06"]
       },
       "sad": {
         "description": "伤心",
+        "priority": 2,
         "expression": ["Sad"],
         "motion": ["04"]
       },
       "neutral": {
         "description": "中性/待机",
+        "priority": 1,
         "expression": ["Neutral"],
-        "motion": ["Idle"]
+        "motion": ["Idle", "04", "05"]
       },
       "thinking": {
         "description": "思考",
+        "priority": 2,
         "expression": ["Neutral"],
         "motion": ["05"]
       },
       "smile": {
         "description": "微笑",
+        "priority": 2,
         "expression": ["Happy"],
         "motion": ["04"]
       },
       "blushing": {
         "description": "脸红",
+        "priority": 2,
         "expression": ["Happy"],
         "motion": ["04"]
       },
       "angry": {
         "description": "生气",
+        "priority": 3,
         "expression": ["Sad"],
         "motion": ["04"]
       },
       "surprised": {
         "description": "惊讶",
+        "priority": 3,
         "expression": ["Neutral"],
         "motion": ["05"]
       },
       "shake": {
         "description": "摇头",
+        "priority": 2,
         "expression": ["Neutral"],
         "motion": ["07"]
       },
       "greet": {
         "description": "打招呼",
+        "priority": 2,
         "expression": ["Happy"],
         "motion": ["04"]
       },
       "agree": {
         "description": "赞同/点头",
+        "priority": 2,
         "expression": ["Happy"],
         "motion": ["06"]
       },
       "disagree": {
         "description": "否定/摇头",
+        "priority": 2,
         "expression": ["Neutral"],
         "motion": ["07"]
       },
       "scared": {
         "description": "害怕",
+        "priority": 3,
         "expression": ["Sad"],
         "motion": ["04"]
       },
       "excited": {
         "description": "兴奋",
+        "priority": 3,
         "expression": ["Happy"],
-        "motion": ["06"]
+        "motion": ["06", "04"]
       },
       "question": {
         "description": "疑问",
+        "priority": 2,
         "expression": ["Neutral"],
         "motion": ["05"]
       },
       "cheer": {
         "description": "欢呼",
+        "priority": 3,
         "expression": ["Happy"],
-        "motion": ["06"]
+        "motion": ["06", "04"]
       },
       "disgust": {
         "description": "厌恶",
+        "priority": 2,
         "expression": ["Sad"],
         "motion": ["04"]
       }

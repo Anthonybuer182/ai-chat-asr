@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import time
-from typing import Dict, Any, List
+from typing import Dict, Any
 from fastapi import WebSocket
 
 logger = logging.getLogger(__name__)
@@ -35,8 +35,12 @@ class ConnectionManager:
             'wakeup_detected': False,
             'interrupt_enabled': True,
             'vad_sensitivity': 0.3,
-            'interrupt_threshold': 0.6,  # 打断阈值
-            'conversation_state': 'idle'  # 对话状态: idle, listening, speaking, interrupted
+            'interrupt_threshold': 0.6,
+            'conversation_state': 'idle',
+            'speech_buffer': [],
+            'last_speech_time': 0.0,
+            'is_speech_active': False,
+            'is_processing': False,
         }
         self.interrupt_flags[client_id] = False
         logger.info(f"客户端 {client_id} 已连接")

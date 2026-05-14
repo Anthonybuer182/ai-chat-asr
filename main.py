@@ -35,11 +35,18 @@ voice_processor = VoiceProcessor()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("🚀 应用启动中...")
-    asyncio.create_task(voice_processor.initialize_models())
-    yield
-    logger.info("🛑 应用关闭中，清理资源...")
-    await manager.shutdown()
-    logger.info("✅ 应用已关闭")
+    init_task = asyncio.create_task(voice_processor.initialize_models())
+    try:
+        yield
+    finally:
+        logger.info("🛑 应用关闭中，清理资源...")
+        init_task.cancel()
+        try:
+            await init_task
+        except asyncio.CancelledError:
+            pass
+        await manager.shutdown()
+        logger.info("✅ 应用已关闭")
 
 
 app = FastAPI(

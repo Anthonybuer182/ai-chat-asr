@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import time
 import asyncio
 from typing import Dict, Any
@@ -10,7 +11,20 @@ from voice_processor import VoiceProcessor
 from connection_manager import ConnectionManager
 from config import settings
 
+SENTENCE_ENDINGS = re.compile(r'[。！？!?…]+')
+ASR_TAG_PATTERN = re.compile(r'<\|[^|]+\|>')
+# Live2D 控制标签，与 voice_processor 中提示一致；TTS 无特殊语义，若不剔除会整段朗读
+LIVE2D_EMOTION_TAG_PATTERN = re.compile(r'\[EMOTION:\w+\]', re.IGNORECASE)
+SILENCE_THRESHOLD = 0.8   # 静音多少秒后触发 ASR
+MIN_SPEECH_BYTES = 3200   # 最少 200ms 的 16kHz int16 音频才送 ASR
+
 logger = logging.getLogger(__name__)
+
+def strip_emotion_tags_for_tts(text: str) -> str:
+    """去掉情绪控制标签后再送 TTS，避免朗读方括号与英文词。"""
+    if not text:
+        return ''
+    return LIVE2D_EMOTION_TAG_PATTERN.sub('', text).strip()
 
 # 全局变量（将在main.py中注入）
 voice_processor: VoiceProcessor = None
@@ -178,6 +192,10 @@ def create_wav_header(audio_bytes: bytes, sample_rate: int = 24000, num_channels
 async def handle_tts_request(sentence: str, client_id: str, websocket: WebSocket):
     """处理TTS请求"""
     try:
+        sentence = strip_emotion_tags_for_tts(sentence)
+        if not sentence:
+            return
+
         tts_model = getattr(settings, 'TTS_MODEL', 'ChatTTS')
         
         if tts_model == 'EdgeTTS':
@@ -286,133 +304,150 @@ async def handle_edge_tts_request(sentence: str, websocket: WebSocket):
         })
 
 async def handle_audio_data(audio_data: bytes, client_id: str, websocket: WebSocket):
-    """处理音频数据"""
-    try:        
-        print(f"处理音频")
-        
-        # 使用VoiceProcessor的detect_speech方法进行VAD语音活动检测
+    """接收音频块，积累语音段，静音结束后触发 ASR → LLM → TTS 管道"""
+    try:
+        user_data = manager.user_data[client_id]
+        current_time = time.time()
+
         if voice_processor:
             vad_result = voice_processor.detect_speech(audio_data, client_id)
-            
-            # 如果没有检测到语音活动，跳过ASR处理
-            if not vad_result.has_speech:
-                logger.debug(f"VAD检测：客户端 {client_id} 未检测到语音活动，跳过ASR")
-                manager.update_activity(client_id)
-                return
-            
-            speech_audio = vad_result.clean_audio if vad_result.clean_audio else vad_result.speech_audio
         else:
-            speech_audio = audio_data
-        
-        # 处理音频数据（语音识别）
-        try:
-            if not voice_processor or not voice_processor.asr_model:
-                logger.warning("ASR模型未初始化")
-                return
-                
-            # 使用ASR模型进行语音识别（使用VAD检测到的有效语音数据）
-            result = voice_processor.asr_model.generate(input=speech_audio)
-            
-            if result and len(result) > 0 and 'text' in result[0]:
-                recognized_text = result[0]['text'].strip()
-                
-                if recognized_text:
-                    print(f"ASR识别结果 - 客户端 {client_id}: {recognized_text}")
-                    
-                    conversation_history = manager.user_data[client_id]['conversation_history']
-                    conversation_history.append({
-                        'type': 'user',
-                        'text': recognized_text,
-                        'timestamp': time.time()
-                    })
-                    
-                    if voice_processor and voice_processor.llm_client:
-                        try:
-                            await websocket.send_json({
-                                'text': recognized_text,
-                                'role': 'user',
-                                'type': 'llm_stream_start',
-                                'timestamp': time.time()
-                            })
-                            
-                            llm_response = ""
-                            sentence_buffer = ""
-                            
-                            async def process_sentence_tts(sentence: str):
-                                """按顺序处理TTS任务"""
-                                try:
-                                    await handle_tts_request(sentence, client_id, websocket)
-                                except Exception as tts_error:
-                                    logger.error(f"TTS处理错误 - 客户端 {client_id}: {tts_error}")
-                            
-                            import re
-                            sentence_endings = r'[。！？!?…]+'
-                            
-                            async for chunk in voice_processor.stream_llm_response(
-                                recognized_text, 
-                                conversation_history
-                            ):
-                                llm_response += chunk
-                                sentence_buffer += chunk
-                                
-                                while re.search(sentence_endings, sentence_buffer):
-                                    match = re.search(sentence_endings, sentence_buffer)
-                                    sentence_end_pos = match.end()
-                                    complete_sentence = sentence_buffer[:sentence_end_pos].strip()
-                                    
-                                    tts_model = getattr(settings, 'TTS_MODEL', 'ChatTTS')
-                                    if complete_sentence and voice_processor and (voice_processor.tts_model or tts_model == 'EdgeTTS'):
-                                        print(f"创建TTS任务: '{complete_sentence}'")
-                                        await process_sentence_tts(complete_sentence)
-                                    else:
-                                        print(f"未创建TTS任务: complete_sentence={complete_sentence}, tts_model={voice_processor.tts_model if voice_processor else None}")
-                                    
-                                    sentence_buffer = sentence_buffer[sentence_end_pos:]
-                            
-                            await websocket.send_json({
-                                'role': 'assistant',
-                                'type': 'llm_stream_end',
-                                'timestamp': time.time()
-                            })
-                            
-                            if sentence_buffer.strip():
-                                remaining_text = sentence_buffer.strip()
-                                tts_model = getattr(settings, 'TTS_MODEL', 'ChatTTS')
-                                if voice_processor and (voice_processor.tts_model or tts_model == 'EdgeTTS'):
-                                    await process_sentence_tts(remaining_text)
-                            
-                            print(f"LLM回复 - 客户端 {client_id}: {llm_response[:50]}...")
-                            
-                            conversation_history.append({
-                                'type': 'assistant',
-                                'text': llm_response,
-                                'timestamp': time.time()
-                            })
-                                
-                        except Exception as llm_error:
-                            logger.error(f"LLM调用错误 - 客户端 {client_id}: {llm_error}")
-                            await websocket.send_json({
-                                'type': 'llm_error',
-                                'message': f'LLM调用失败: {str(llm_error)}'
-                            })
+            # VAD 不可用时直接积累所有音频，60 秒超时兜底
+            user_data['speech_buffer'].append(audio_data)
+            user_data['last_speech_time'] = current_time
+            user_data['is_speech_active'] = True
+            manager.update_activity(client_id)
+            return
+
+        if vad_result.has_speech:
+            user_data['speech_buffer'].append(audio_data)
+            user_data['last_speech_time'] = current_time
+            if not user_data['is_speech_active']:
+                user_data['is_speech_active'] = True
+                logger.debug(f"客户端 {client_id} 检测到语音开始")
+        elif user_data['is_speech_active']:
+            silence_duration = current_time - user_data['last_speech_time']
+            if silence_duration >= SILENCE_THRESHOLD:
+                user_data['is_speech_active'] = False
+                buffered_audio = b''.join(user_data['speech_buffer'])
+                user_data['speech_buffer'] = []
+                logger.debug(f"客户端 {client_id} 语音段结束，积累 {len(buffered_audio)} 字节")
+                if len(buffered_audio) >= MIN_SPEECH_BYTES:
+                    if not user_data.get('is_processing', False):
+                        user_data['is_processing'] = True
+                        asyncio.create_task(
+                            _run_speech_pipeline(buffered_audio, client_id, websocket)
+                        )
                     else:
-                        logger.warning(f"LLM不可用 - 客户端 {client_id}")
-                        await websocket.send_json({
-                            'type': 'llm_unavailable',
-                            'message': 'LLM服务暂不可用',
-                            'timestamp': time.time()
-                        })
-                        if voice_processor and voice_processor.tts_model:
-                            fallback_response = "抱歉，我现在无法回答您的问题。"
-                            await handle_tts_request(fallback_response, client_id, websocket)
-                            
-                else:
-                    logger.debug(f"ASR识别结果为空 - 客户端 {client_id}")
-            else:
-                logger.debug(f"ASR处理结果无效 - 客户端 {client_id}")
-        
-        except Exception as e:
-            logger.error(f"ASR处理错误 - 客户端 {client_id}: {e}")
-    
+                        logger.debug(f"客户端 {client_id} 上一段语音仍在处理，跳过本段")
+
+        manager.update_activity(client_id)
+
     except Exception as e:
         logger.error(f"处理音频数据错误 - 客户端 {client_id}: {e}")
+
+
+async def _run_speech_pipeline(audio_data: bytes, client_id: str, websocket: WebSocket):
+    """包装 process_speech，确保无论是否异常都会清除 is_processing 标志"""
+    try:
+        await process_speech(audio_data, client_id, websocket)
+    finally:
+        if client_id in manager.user_data:
+            manager.user_data[client_id]['is_processing'] = False
+
+
+async def tts_worker(queue: asyncio.Queue, client_id: str, websocket: WebSocket):
+    """从队列中依次取句子生成并发送 TTS 音频"""
+    while True:
+        sentence = await queue.get()
+        if sentence is None:
+            break
+        try:
+            await handle_tts_request(sentence, client_id, websocket)
+        except Exception as e:
+            logger.error(f"TTS worker 错误 - 客户端 {client_id}: {e}")
+
+
+async def process_speech(audio_data: bytes, client_id: str, websocket: WebSocket):
+    """对完整语音段执行 ASR → LLM（流式）→ TTS（并行）管道"""
+    if not voice_processor or not voice_processor.asr_model:
+        logger.warning("ASR模型未初始化")
+        return
+
+    try:
+        result = voice_processor.asr_model.generate(input=audio_data)
+        if not (result and len(result) > 0 and 'text' in result[0]):
+            return
+
+        raw_text = result[0]['text'].strip()
+        recognized_text = ASR_TAG_PATTERN.sub('', raw_text).strip()
+        if not recognized_text:
+            return
+
+        logger.info(f"ASR识别 - 客户端 {client_id}: {recognized_text}")
+
+        conversation_history = manager.user_data[client_id]['conversation_history']
+        conversation_history.append({
+            'type': 'user',
+            'text': recognized_text,
+            'timestamp': time.time()
+        })
+
+        if not (voice_processor and voice_processor.llm_client):
+            await websocket.send_json({
+                'type': 'llm_unavailable',
+                'message': 'LLM服务暂不可用',
+                'timestamp': time.time()
+            })
+            return
+
+        await websocket.send_json({
+            'type': 'llm_stream_start',
+            'text': recognized_text,
+            'role': 'user',
+            'timestamp': time.time()
+        })
+
+        tts_queue: asyncio.Queue = asyncio.Queue()
+        tts_task = asyncio.create_task(tts_worker(tts_queue, client_id, websocket))
+
+        llm_response = ""
+        sentence_buffer = ""
+        tts_enabled = voice_processor.tts_model or getattr(settings, 'TTS_MODEL', '') == 'EdgeTTS'
+
+        async for chunk in voice_processor.stream_llm_response(recognized_text, conversation_history):
+            llm_response += chunk
+            sentence_buffer += chunk
+            while SENTENCE_ENDINGS.search(sentence_buffer):
+                match = SENTENCE_ENDINGS.search(sentence_buffer)
+                sentence = sentence_buffer[:match.end()].strip()
+                sentence_buffer = sentence_buffer[match.end():]
+                if sentence and tts_enabled:
+                    await tts_queue.put(sentence)
+
+        if sentence_buffer.strip() and tts_enabled:
+            await tts_queue.put(sentence_buffer.strip())
+
+        await tts_queue.put(None)
+
+        await websocket.send_json({
+            'type': 'llm_stream_end',
+            'role': 'assistant',
+            'timestamp': time.time()
+        })
+
+        await tts_task
+
+        conversation_history.append({
+            'type': 'assistant',
+            'text': llm_response,
+            'timestamp': time.time()
+        })
+        logger.info(f"LLM回复 - 客户端 {client_id}: {llm_response[:60]}...")
+
+    except Exception as e:
+        logger.error(f"语音处理管道错误 - 客户端 {client_id}: {e}")
+        await websocket.send_json({
+            'type': 'llm_error',
+            'message': f'处理失败: {str(e)}'
+        })
