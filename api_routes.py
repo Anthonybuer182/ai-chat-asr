@@ -597,7 +597,7 @@ async def change_settings(settings_dict: Dict[str, Any] = Body(...)):
     """修改系统设置"""
     try:
         valid_keys = ["TTS_MODEL", "WAKEUP_KEYWORD", "WAKEUP_THRESHOLD", "MODEL_NAME", "CURRENT_LIVE2D_MODEL"]
-        valid_tts_models = ["ChatTTS", "EdgeTTS"]
+        valid_tts_models = ["ChatTTS", "EdgeTTS", "MiniMax"]
         
         update_data = {}
         errors = []

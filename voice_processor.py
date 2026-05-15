@@ -506,6 +506,114 @@ class VoiceProcessor:
             logger.info("使用备用TTS方案")
             return True
 
+    async def generate_minimax_tts(self, text: str) -> Optional[bytes]:
+        """调用 MiniMax T2A HTTP API；响应 data.audio 为 hex，解码为 mp3/wav 等原始字节。"""
+        text = (text or "").strip()
+        if not text:
+            return None
+        api_key = getattr(settings, "MINIMAX_API_KEY", "") or ""
+        if not api_key.strip():
+            logger.warning("MiniMax TTS：未配置 MINIMAX_API_KEY")
+            return None
+
+        import httpx
+
+        # 避免 .env 里写成 "Bearer xxx" 导致双重 Bearer
+        _key = api_key.strip()
+        if _key.lower().startswith("bearer "):
+            _key = _key[7:].strip()
+
+        base = (getattr(settings, "MINIMAX_API_BASE", None) or "https://api-bj.minimaxi.com").rstrip("/")
+        url = f"{base}/v1/t2a_v2"
+
+        voice_setting = {
+            "voice_id": getattr(settings, "MINIMAX_VOICE_ID", "male-qn-qingse"),
+            "speed": 1,
+            "vol": 1,
+            "pitch": 0,
+        }
+        _emotion = (getattr(settings, "MINIMAX_VOICE_EMOTION", "") or "").strip()
+        if _emotion:
+            voice_setting["emotion"] = _emotion
+
+        audio_fmt = (getattr(settings, "MINIMAX_AUDIO_FORMAT", "mp3") or "mp3").strip().lower()
+        sample_rate = int(getattr(settings, "MINIMAX_AUDIO_SAMPLE_RATE", 32000))
+
+        payload = {
+            "model": getattr(settings, "MINIMAX_TTS_MODEL", "speech-2.8-hd"),
+            "text": text,
+            "stream": False,
+            "output_format": "hex",
+            "voice_setting": voice_setting,
+            "audio_setting": {
+                "sample_rate": sample_rate,
+                "bitrate": 128000,
+                "format": audio_fmt,
+                "channel": 1,
+            },
+            "subtitle_enable": False,
+        }
+        _lang = (getattr(settings, "MINIMAX_LANGUAGE_BOOST", "") or "").strip()
+        if _lang:
+            payload["language_boost"] = _lang
+
+        headers = {
+            "Authorization": f"Bearer {_key}",
+            "Content-Type": "application/json",
+        }
+        _gid = (getattr(settings, "MINIMAX_GROUP_ID", "") or "").strip()
+        if _gid:
+            headers["GroupId"] = _gid
+
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                resp = await client.post(url, json=payload, headers=headers)
+                resp.raise_for_status()
+                body = resp.json()
+        except Exception as e:
+            logger.error(f"MiniMax TTS 请求失败: {e}")
+            return None
+
+        base_resp = body.get("base_resp") or {}
+        # status_code 缺省视为成功；字符串 "0" 等与整数 0 等价
+        _code = base_resp.get("status_code")
+        _ok = True
+        if _code is not None:
+            try:
+                _ok = int(_code) == 0
+            except (TypeError, ValueError):
+                _ok = False
+        if not _ok:
+            logger.error(
+                "MiniMax TTS 业务错误: %s — %s",
+                _code,
+                base_resp.get("status_msg"),
+            )
+            return None
+
+        data = body.get("data") or {}
+        audio_hex = data.get("audio")
+        if not audio_hex or not isinstance(audio_hex, str):
+            logger.error("MiniMax TTS 响应缺少 audio 字段")
+            return None
+
+        # hex 可能含空白；完整音频为长十六进制串（你贴的 494433 即 MP3 头 ID3 的十六进制）
+        try:
+            hex_clean = "".join(audio_hex.split())
+            if len(hex_clean) % 2 != 0:
+                logger.error("MiniMax TTS audio 十六进制长度非偶数")
+                return None
+            raw = bytes.fromhex(hex_clean)
+        except ValueError as e:
+            logger.error(f"MiniMax TTS audio 十六进制解析失败: {e}")
+            return None
+
+        if not raw:
+            logger.error("MiniMax TTS 解码后音频为空")
+            return None
+
+        return raw
+
     async def generate_edge_tts(self, text: str) -> Optional[bytes]:
         """使用 EdgeTTS 生成语音"""
         try:
@@ -644,7 +752,14 @@ class VoiceProcessor:
                     elif entry['type'] == 'assistant':
                         messages.append({"role": "assistant", "content": entry['text']})
             
-            messages.append({"role": "user", "content": user_message})
+            # process_speech 已把本轮 user 写入 history 时再 append 会导致用户句重复
+            _dup = bool(
+                conversation_history
+                and conversation_history[-1].get('type') == 'user'
+                and conversation_history[-1].get('text') == user_message
+            )
+            if not _dup:
+                messages.append({"role": "user", "content": user_message})
             
             response = self.llm_client.chat.completions.create(
                 model=settings.MODEL_NAME,
@@ -685,7 +800,13 @@ class VoiceProcessor:
                     elif entry['type'] == 'assistant':
                         messages.append({"role": "assistant", "content": entry['text']})
             
-            messages.append({"role": "user", "content": user_message})
+            _dup = bool(
+                conversation_history
+                and conversation_history[-1].get('type') == 'user'
+                and conversation_history[-1].get('text') == user_message
+            )
+            if not _dup:
+                messages.append({"role": "user", "content": user_message})
             
             response = self.llm_client.chat.completions.create(
                 model=settings.MODEL_NAME,

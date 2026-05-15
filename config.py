@@ -21,7 +21,21 @@ class Settings(BaseSettings):
 
     # TTS模型配置
     TTS_MODEL: str = "EdgeTTS"
-    
+    # MiniMax 语音合成（HTTPS API，不占本地显卡）；文档: https://platform.minimax.io/docs/api-reference/speech-t2a-http
+    MINIMAX_API_KEY: str = ""
+    # 与 API Key 同页或账户信息中的 GroupId / 组织 ID；Postman 的 Headers 里若有 GroupId，须填此项
+    MINIMAX_GROUP_ID: str = ""
+    # 语音 API 网关：国内多为 api-bj.minimaxi.com，国际文档常见 api.minimax.io，须与控制台密钥所属区域一致
+    MINIMAX_API_BASE: str = "https://api-bj.minimaxi.com"
+    # 与官方示例一致时可设 speech-2.8-hd；旧版可用 speech-2.6-turbo
+    MINIMAX_TTS_MODEL: str = "speech-2.8-hd"
+    MINIMAX_VOICE_ID: str = "male-qn-qingse"
+    # 留空则请求体中不传该字段（与部分 Postman 用例一致）；可填 Chinese / auto 等
+    MINIMAX_LANGUAGE_BOOST: str = ""
+    # speech-2.8 等模型支持，如 happy；留空则不传
+    MINIMAX_VOICE_EMOTION: str = ""
+    MINIMAX_AUDIO_FORMAT: str = "mp3"  # mp3 / wav / flac（非流式）
+    MINIMAX_AUDIO_SAMPLE_RATE: int = 32000
 
     
     # 服务器配置

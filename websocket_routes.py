@@ -197,9 +197,11 @@ async def handle_tts_request(sentence: str, client_id: str, websocket: WebSocket
             return
 
         tts_model = getattr(settings, 'TTS_MODEL', 'ChatTTS')
-        
+
         if tts_model == 'EdgeTTS':
             await handle_edge_tts_request(sentence, websocket)
+        elif tts_model == 'MiniMax':
+            await handle_minimax_tts_request(sentence, websocket)
         else:
             await handle_chat_tts_request(sentence, websocket)
     
@@ -263,6 +265,51 @@ async def handle_chat_tts_request(sentence: str, websocket: WebSocket):
             'type': 'tts_error',
             'text': sentence,
             'message': f'ChatTTS处理错误: {str(e)}',
+            'timestamp': time.time()
+        })
+
+async def handle_minimax_tts_request(sentence: str, websocket: WebSocket):
+    """处理 MiniMax 云端 TTS（返回 WAV 二进制，与 Edge 路径一致送前端 base64）"""
+    try:
+        if not voice_processor:
+            await websocket.send_json({
+                'type': 'tts_error',
+                'message': 'VoiceProcessor未初始化',
+                'timestamp': time.time()
+            })
+            return
+
+        if not getattr(settings, 'MINIMAX_API_KEY', '').strip():
+            await websocket.send_json({
+                'type': 'tts_error',
+                'message': '未配置 MINIMAX_API_KEY，请在环境变量或 .env 中设置',
+                'timestamp': time.time()
+            })
+            return
+
+        wav_data = await voice_processor.generate_minimax_tts(sentence)
+
+        if wav_data:
+            audio_base64 = base64.b64encode(wav_data).decode('utf-8')
+            await websocket.send_json({
+                'type': 'tts_audio',
+                'audio': audio_base64,
+                'text': sentence,
+                'message': 'MiniMax TTS生成成功',
+                'timestamp': time.time()
+            })
+        else:
+            await websocket.send_json({
+                'type': 'tts_error',
+                'message': 'MiniMax TTS生成失败'
+            })
+
+    except Exception as e:
+        logger.error(f"MiniMax TTS处理错误: {e}")
+        await websocket.send_json({
+            'type': 'tts_error',
+            'text': sentence,
+            'message': f'MiniMax TTS处理错误: {str(e)}',
             'timestamp': time.time()
         })
 
@@ -413,37 +460,57 @@ async def process_speech(audio_data: bytes, client_id: str, websocket: WebSocket
 
         llm_response = ""
         sentence_buffer = ""
-        tts_enabled = voice_processor.tts_model or getattr(settings, 'TTS_MODEL', '') == 'EdgeTTS'
+        _tts_choice = getattr(settings, 'TTS_MODEL', 'ChatTTS')
+        if _tts_choice == 'EdgeTTS':
+            tts_enabled = True
+        elif _tts_choice == 'MiniMax':
+            tts_enabled = bool(getattr(settings, 'MINIMAX_API_KEY', '').strip())
+        else:
+            tts_enabled = bool(voice_processor and voice_processor.tts_model)
 
-        async for chunk in voice_processor.stream_llm_response(recognized_text, conversation_history):
-            llm_response += chunk
-            sentence_buffer += chunk
-            while SENTENCE_ENDINGS.search(sentence_buffer):
-                match = SENTENCE_ENDINGS.search(sentence_buffer)
-                sentence = sentence_buffer[:match.end()].strip()
-                sentence_buffer = sentence_buffer[match.end():]
-                if sentence and tts_enabled:
-                    await tts_queue.put(sentence)
+        llm_stream_ok = False
+        try:
+            async for chunk in voice_processor.stream_llm_response(recognized_text, conversation_history):
+                llm_response += chunk
+                sentence_buffer += chunk
+                while SENTENCE_ENDINGS.search(sentence_buffer):
+                    match = SENTENCE_ENDINGS.search(sentence_buffer)
+                    sentence = sentence_buffer[:match.end()].strip()
+                    sentence_buffer = sentence_buffer[match.end():]
+                    if sentence and tts_enabled:
+                        await tts_queue.put(sentence)
 
-        if sentence_buffer.strip() and tts_enabled:
-            await tts_queue.put(sentence_buffer.strip())
+            if sentence_buffer.strip() and tts_enabled:
+                await tts_queue.put(sentence_buffer.strip())
 
-        await tts_queue.put(None)
+            await tts_queue.put(None)
 
-        await websocket.send_json({
-            'type': 'llm_stream_end',
-            'role': 'assistant',
-            'timestamp': time.time()
-        })
+            await websocket.send_json({
+                'type': 'llm_stream_end',
+                'role': 'assistant',
+                'timestamp': time.time()
+            })
 
-        await tts_task
+            await tts_task
+            llm_stream_ok = True
+        finally:
+            if not tts_task.done():
+                try:
+                    await tts_queue.put(None)
+                except Exception:
+                    pass
+                try:
+                    await tts_task
+                except Exception:
+                    pass
 
-        conversation_history.append({
-            'type': 'assistant',
-            'text': llm_response,
-            'timestamp': time.time()
-        })
-        logger.info(f"LLM回复 - 客户端 {client_id}: {llm_response[:60]}...")
+        if llm_stream_ok:
+            conversation_history.append({
+                'type': 'assistant',
+                'text': llm_response,
+                'timestamp': time.time()
+            })
+            logger.info(f"LLM回复 - 客户端 {client_id}: {llm_response[:60]}...")
 
     except Exception as e:
         logger.error(f"语音处理管道错误 - 客户端 {client_id}: {e}")
