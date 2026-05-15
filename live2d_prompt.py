@@ -157,6 +157,36 @@ def strip_emotion_tags(text: str) -> str:
     return EMOTION_TAG_PATTERN.sub("", text).strip()
 
 
+def first_emotion_key_from_tagged(text: str) -> Optional[str]:
+    """从仍含 [EMOTION:…] 的文本中取首个标签的类型名（大小写与文中一致）。"""
+    m = EMOTION_TAG_PATTERN.search(text or "")
+    return m.group(1) if m else None
+
+
+def get_model_emotion_entry(model_key: Optional[str], emotion_key: str) -> Optional[Dict[str, Any]]:
+    """读取 model_dict 中某模型下某情绪条目的 dict（不含顶层 path）。"""
+    if not model_key or not emotion_key:
+        return None
+    mk = str(model_key).strip()
+    ek = str(emotion_key).strip()
+    if not mk or not ek:
+        return None
+    raw = _load_model_dict_raw()
+    block = (raw.get("models") or {}).get(mk)
+    if not isinstance(block, dict):
+        return None
+    v = block.get(ek)
+    if isinstance(v, dict):
+        return v
+    ekl = ek.lower()
+    for k, val in block.items():
+        if k == "path" or not isinstance(val, dict):
+            continue
+        if k.lower() == ekl:
+            return val
+    return None
+
+
 def clean_llm_reply_for_history(reply: str, allowed: FrozenSet[str]) -> str:
     """写入多轮上下文：去掉非法标记后剥掉全部 EMOTION，避免污染后续对话。"""
     return strip_emotion_tags(sanitize_emotion_tags(reply or "", allowed))

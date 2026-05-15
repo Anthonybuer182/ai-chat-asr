@@ -3,7 +3,7 @@ import logging
 import re
 import time
 import asyncio
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from fastapi import WebSocket, WebSocketDisconnect
 import base64
 import ChatTTS
@@ -20,6 +20,7 @@ from live2d_prompt import (
     sanitize_emotion_tags,
     strip_emotion_tags as strip_emotion_tags_for_tts,
 )
+from minimax_emotion_interjection import apply_minimax_emotion_interjection
 
 SILENCE_THRESHOLD = 0.8   # 静音多少秒后触发 ASR
 MIN_SPEECH_BYTES = 3200   # 最少 200ms 的 16kHz int16 音频才送 ASR
@@ -194,6 +195,7 @@ async def handle_tts_request(
     client_id: str,
     websocket: WebSocket,
     allowed_emotions,
+    live2d_model_key: Optional[str] = None,
 ):
     """对 LLM 片段做标签白名单清洗；TTS 用净文本；前端用带合法标签的副本驱动 Live2D。"""
     try:
@@ -207,7 +209,10 @@ async def handle_tts_request(
         if tts_model == 'EdgeTTS':
             await handle_edge_tts_request(tts_plain, websocket, cleaned_tags)
         elif tts_model == 'MiniMax':
-            await handle_minimax_tts_request(tts_plain, websocket, cleaned_tags)
+            tts_minimax = apply_minimax_emotion_interjection(
+                tts_plain, cleaned_tags, live2d_model_key, settings
+            )
+            await handle_minimax_tts_request(tts_minimax, websocket, cleaned_tags)
         else:
             await handle_chat_tts_request(tts_plain, websocket, cleaned_tags)
 
@@ -413,14 +418,22 @@ async def _run_speech_pipeline(audio_data: bytes, client_id: str, websocket: Web
             manager.user_data[client_id]['is_processing'] = False
 
 
-async def tts_worker(queue: asyncio.Queue, client_id: str, websocket: WebSocket, allowed_emotions):
+async def tts_worker(
+    queue: asyncio.Queue,
+    client_id: str,
+    websocket: WebSocket,
+    allowed_emotions,
+    live2d_model_key: Optional[str] = None,
+):
     """从队列中依次取句子生成并发送 TTS 音频"""
     while True:
         sentence = await queue.get()
         if sentence is None:
             break
         try:
-            await handle_tts_request(sentence, client_id, websocket, allowed_emotions)
+            await handle_tts_request(
+                sentence, client_id, websocket, allowed_emotions, live2d_model_key
+            )
         except Exception as e:
             logger.error(f"TTS worker 错误 - 客户端 {client_id}: {e}")
 
@@ -474,7 +487,9 @@ async def process_speech(audio_data: bytes, client_id: str, websocket: WebSocket
         })
 
         tts_queue: asyncio.Queue = asyncio.Queue()
-        tts_task = asyncio.create_task(tts_worker(tts_queue, client_id, websocket, allowed))
+        tts_task = asyncio.create_task(
+            tts_worker(tts_queue, client_id, websocket, allowed, live_key)
+        )
 
         llm_response = ""
         sentence_buffer = ""

@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     MINIMAX_LANGUAGE_BOOST: str = ""
     # speech-2.8 等模型支持，如 happy；留空则不传
     MINIMAX_VOICE_EMOTION: str = ""
+    # speech-2.8-hd / speech-2.8-turbo 句内语气词：(laughs) 等；按 [EMOTION:] 自动注入（见 minimax_emotion_interjection）
+    MINIMAX_EMOTION_INTERJECTION_ENABLED: bool = True
     MINIMAX_AUDIO_FORMAT: str = "mp3"  # mp3 / wav / flac（非流式）
     MINIMAX_AUDIO_SAMPLE_RATE: int = 32000
 

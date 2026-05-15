@@ -69,6 +69,42 @@ def main() -> None:
     assert "允许的 [EMOTION:类型]" in blob
     assert len(blob) > 200
 
+    from live2d_prompt import first_emotion_key_from_tagged, get_model_emotion_entry
+    from minimax_emotion_interjection import (
+        apply_minimax_emotion_interjection,
+        minimax_model_supports_text_interjection,
+        resolve_interjection_for_emotion,
+        text_has_minimax_interjection,
+    )
+
+    assert first_emotion_key_from_tagged("[EMOTION:happy]你好") == "happy"
+    assert minimax_model_supports_text_interjection("speech-2.8-hd")
+    assert not minimax_model_supports_text_interjection("speech-2.6-turbo")
+    assert text_has_minimax_interjection("你好(chuckle)了") is True
+    assert resolve_interjection_for_emotion("happy", None) == "(chuckle)"
+
+    cfg_ok = SimpleNamespace(
+        MINIMAX_EMOTION_INTERJECTION_ENABLED=True,
+        MINIMAX_TTS_MODEL="speech-2.8-hd",
+    )
+    inj = apply_minimax_emotion_interjection(
+        "你好呀。", "[EMOTION:happy]你好呀。", None, cfg_ok
+    )
+    assert inj.startswith("(chuckle)")
+
+    dup = apply_minimax_emotion_interjection(
+        "(chuckle)嗨。", "[EMOTION:happy](chuckle)嗨。", None, cfg_ok
+    )
+    assert dup == "(chuckle)嗨。"
+
+    cfg_off = SimpleNamespace(MINIMAX_EMOTION_INTERJECTION_ENABLED=False, MINIMAX_TTS_MODEL="speech-2.8-hd")
+    assert apply_minimax_emotion_interjection("你好。", "[EMOTION:happy]你好。", None, cfg_off) == "你好。"
+
+    eps_happy = get_model_emotion_entry("Epsilon", "happy") or {}
+    # model_dict 未配置 minimax_tag 时使用全局默认
+    if "minimax_tag" not in eps_happy:
+        assert resolve_interjection_for_emotion("happy", "Epsilon") == "(chuckle)"
+
     print("verify_live2d_flow: OK")
 
 
