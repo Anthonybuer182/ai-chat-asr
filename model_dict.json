@@ -2,527 +2,1779 @@
   "models": {
     "Epsilon": {
       "path": "Epsilon/runtime/Epsilon.model3.json",
+      "neutral": {
+        "description": "中性/待机",
+        "priority": 1,
+        "motion": [
+          "Idle",
+          "Tap_01"
+        ],
+        "expression": [
+          "Normal"
+        ]
+      },
       "happy": {
         "description": "开心",
         "priority": 2,
-        "expression": ["Smile", "Blushing", "f01"],
-        "motion": ["Epsilon_m_sp_03", "Epsilon_m_03"]
+        "motion": [
+          "Speak_02",
+          "Speak_03",
+          "Tap_01"
+        ],
+        "expression": [
+          "Smile",
+          "Blushing"
+        ]
       },
       "sad": {
         "description": "伤心",
         "priority": 2,
-        "expression": ["Sad", "f02"],
-        "motion": ["Epsilon_m_sp_04", "Epsilon_m_04"]
+        "motion": [
+          "Shake_01",
+          "FlickDown_01"
+        ],
+        "expression": [
+          "Sad"
+        ]
       },
       "angry": {
         "description": "生气",
         "priority": 3,
-        "expression": ["Angry"],
-        "motion": ["Epsilon_m_06", "Epsilon_m_01"]
+        "motion": [
+          "Shake_02",
+          "FlickDown_02"
+        ],
+        "expression": [
+          "Angry"
+        ]
       },
       "surprised": {
         "description": "惊讶",
         "priority": 3,
-        "expression": ["Surprised"],
-        "motion": ["Epsilon_m_02"]
-      },
-      "neutral": {
-        "description": "中性/待机",
-        "priority": 1,
-        "expression": ["Normal", "f01"],
-        "motion": ["Epsilon_idle_01", "Epsilon_m_01", "Epsilon_m_02"]
+        "motion": [
+          "Speak_06",
+          "Tap_04"
+        ],
+        "expression": [
+          "Surprised"
+        ]
       },
       "thinking": {
         "description": "思考",
         "priority": 2,
-        "expression": ["Normal"],
-        "motion": ["Epsilon_m_sp_02", "Epsilon_m_02"]
+        "motion": [
+          "FlickDown_01",
+          "Tap_02"
+        ],
+        "expression": [
+          "Normal"
+        ]
+      },
+      "think": {
+        "description": "思考(UI)",
+        "priority": 2,
+        "motion": [
+          "Tap_03",
+          "FlickDown_01"
+        ]
       },
       "smile": {
         "description": "微笑",
         "priority": 2,
-        "expression": ["Smile"],
-        "motion": ["Epsilon_m_03", "Epsilon_m_sp_03"]
+        "motion": [
+          "Speak_01",
+          "Tap_03"
+        ],
+        "expression": [
+          "Smile"
+        ]
       },
       "blushing": {
         "description": "脸红",
         "priority": 2,
-        "expression": ["Blushing"],
-        "motion": ["Epsilon_m_sp_03"]
+        "motion": [
+          "Tap_02",
+          "Speak_04"
+        ],
+        "expression": [
+          "Blushing"
+        ]
       },
       "greet": {
         "description": "打招呼",
         "priority": 2,
-        "expression": ["Smile"],
-        "motion": ["Epsilon_m_sp_01", "Epsilon_m_01"]
+        "motion": [
+          "Speak_01",
+          "Tap_01"
+        ],
+        "expression": [
+          "Smile"
+        ]
       },
       "agree": {
-        "description": "赞同/点头",
+        "description": "赞同",
         "priority": 2,
-        "expression": ["Normal"],
-        "motion": ["Epsilon_m_05"]
+        "motion": [
+          "Tap_03",
+          "Speak_03"
+        ],
+        "expression": [
+          "Smile"
+        ]
       },
       "disagree": {
-        "description": "否定/摇头",
+        "description": "否定",
         "priority": 2,
-        "expression": ["Sad"],
-        "motion": ["Epsilon_shake_01"]
+        "motion": [
+          "Shake_01",
+          "Shake_02"
+        ],
+        "expression": [
+          "Sad"
+        ]
       },
       "scared": {
         "description": "害怕",
         "priority": 3,
-        "expression": ["Surprised"],
-        "motion": ["Epsilon_m_02"]
+        "motion": [
+          "Speak_06",
+          "FlickDown_02"
+        ],
+        "expression": [
+          "Surprised",
+          "Sad"
+        ]
       },
       "excited": {
         "description": "兴奋",
         "priority": 3,
-        "expression": ["Happy"],
-        "motion": ["Epsilon_m_03", "Epsilon_m_sp_03"]
+        "motion": [
+          "Speak_04",
+          "Speak_05",
+          "Tap_04"
+        ],
+        "expression": [
+          "Smile",
+          "Surprised"
+        ]
       },
       "question": {
         "description": "疑问",
         "priority": 2,
-        "expression": ["Surprised"],
-        "motion": ["Epsilon_m_sp_02", "Epsilon_m_02"]
+        "motion": [
+          "Speak_06",
+          "FlickDown_01"
+        ],
+        "expression": [
+          "Surprised"
+        ]
       },
       "cheer": {
         "description": "欢呼",
         "priority": 3,
-        "expression": ["Happy"],
-        "motion": ["Epsilon_m_03", "Epsilon_m_sp_03"]
+        "motion": [
+          "Speak_03",
+          "Speak_04"
+        ],
+        "expression": [
+          "Smile",
+          "Blushing"
+        ]
       },
       "disgust": {
         "description": "厌恶",
         "priority": 2,
-        "expression": ["Angry"],
-        "motion": ["Epsilon_m_06", "Epsilon_m_01"]
+        "motion": [
+          "Shake_02",
+          "FlickDown_02"
+        ],
+        "expression": [
+          "Angry"
+        ]
       },
       "shake": {
         "description": "摇头",
         "priority": 2,
-        "expression": ["Sad"],
-        "motion": ["Epsilon_shake_01"]
+        "motion": [
+          "Shake_01"
+        ],
+        "expression": [
+          "Sad"
+        ]
+      },
+      "speak": {
+        "description": "播报",
+        "priority": 2,
+        "motion": [
+          "Speak_01",
+          "Speak_02",
+          "Speak_03",
+          "Speak_04",
+          "Speak_05"
+        ]
+      },
+      "listen": {
+        "description": "收听",
+        "priority": 2,
+        "motion": [
+          "Idle",
+          "Tap_02",
+          "Speak_06"
+        ]
+      },
+      "wakeup": {
+        "description": "唤醒",
+        "priority": 4,
+        "motion": [
+          "Tap_01",
+          "Tap_04"
+        ],
+        "expression": [
+          "Surprised"
+        ]
       }
     },
-    "hijiki": {
-      "path": "hijiki/runtime/hijiki.model3.json",
+    "tororo_hijiki/hijiki": {
+      "neutral": {
+        "description": "中性/待机",
+        "priority": 1,
+        "motion": [
+          "00_idle",
+          "04"
+        ]
+      },
       "happy": {
         "description": "开心",
         "priority": 2,
-        "expression": ["Happy"],
-        "motion": ["08"]
+        "motion": [
+          "08",
+          "06"
+        ]
       },
       "sad": {
         "description": "伤心",
         "priority": 2,
-        "expression": ["Sad"],
-        "motion": ["04"]
-      },
-      "neutral": {
-        "description": "中性/待机",
-        "priority": 1,
-        "expression": ["Neutral"],
-        "motion": ["00_idle", "06", "07"]
-      },
-      "thinking": {
-        "description": "思考",
-        "priority": 2,
-        "expression": ["Neutral"],
-        "motion": ["07"]
-      },
-      "smile": {
-        "description": "微笑",
-        "priority": 2,
-        "expression": ["Happy"],
-        "motion": ["06"]
-      },
-      "blushing": {
-        "description": "脸红",
-        "priority": 2,
-        "expression": ["Happy"],
-        "motion": ["06"]
+        "motion": [
+          "04",
+          "03"
+        ]
       },
       "angry": {
         "description": "生气",
         "priority": 3,
-        "expression": ["Sad"],
-        "motion": ["04"]
+        "motion": [
+          "03",
+          "04"
+        ]
       },
       "surprised": {
         "description": "惊讶",
         "priority": 3,
-        "expression": ["Neutral"],
-        "motion": ["07"]
+        "motion": [
+          "07",
+          "05"
+        ]
+      },
+      "thinking": {
+        "description": "思考",
+        "priority": 2,
+        "motion": [
+          "05",
+          "02"
+        ]
+      },
+      "think": {
+        "description": "思考(UI)",
+        "priority": 2,
+        "motion": [
+          "06",
+          "05"
+        ]
+      },
+      "smile": {
+        "description": "微笑",
+        "priority": 2,
+        "motion": [
+          "06",
+          "07"
+        ]
+      },
+      "blushing": {
+        "description": "脸红",
+        "priority": 2,
+        "motion": [
+          "06",
+          "05"
+        ]
       },
       "shake": {
         "description": "摇头",
         "priority": 2,
-        "expression": ["Sad"],
-        "motion": ["04"]
+        "motion": [
+          "04"
+        ]
       },
       "greet": {
         "description": "打招呼",
         "priority": 2,
-        "expression": ["Happy"],
-        "motion": ["06"]
+        "motion": [
+          "08",
+          "06"
+        ]
       },
       "agree": {
-        "description": "赞同/点头",
+        "description": "赞同",
         "priority": 2,
-        "expression": ["Happy"],
-        "motion": ["08"]
+        "motion": [
+          "08",
+          "07"
+        ]
       },
       "disagree": {
-        "description": "否定/摇头",
+        "description": "否定",
         "priority": 2,
-        "expression": ["Sad"],
-        "motion": ["04"]
+        "motion": [
+          "04",
+          "03"
+        ]
       },
       "scared": {
         "description": "害怕",
         "priority": 3,
-        "expression": ["Sad"],
-        "motion": ["04"]
+        "motion": [
+          "04",
+          "02"
+        ]
       },
       "excited": {
         "description": "兴奋",
         "priority": 3,
-        "expression": ["Happy"],
-        "motion": ["08"]
+        "motion": [
+          "08",
+          "05"
+        ]
       },
       "question": {
         "description": "疑问",
         "priority": 2,
-        "expression": ["Neutral"],
-        "motion": ["07"]
+        "motion": [
+          "07",
+          "06"
+        ]
       },
       "cheer": {
         "description": "欢呼",
         "priority": 3,
-        "expression": ["Happy"],
-        "motion": ["08"]
+        "motion": [
+          "08",
+          "05"
+        ]
       },
       "disgust": {
         "description": "厌恶",
         "priority": 2,
-        "expression": ["Sad"],
-        "motion": ["04"]
-      }
+        "motion": [
+          "03",
+          "04"
+        ]
+      },
+      "speak": {
+        "description": "播报",
+        "priority": 2,
+        "motion": [
+          "06",
+          "07",
+          "03"
+        ]
+      },
+      "listen": {
+        "description": "收听",
+        "priority": 2,
+        "motion": [
+          "00_idle",
+          "04",
+          "06"
+        ]
+      },
+      "wakeup": {
+        "description": "唤醒",
+        "priority": 4,
+        "motion": [
+          "08",
+          "07"
+        ]
+      },
+      "path": "tororo_hijiki/hijiki/runtime/hijiki.model3.json"
+    },
+    "tororo_hijiki/tororo": {
+      "neutral": {
+        "description": "中性/待机",
+        "priority": 1,
+        "motion": [
+          "00_idle",
+          "04"
+        ]
+      },
+      "happy": {
+        "description": "开心",
+        "priority": 2,
+        "motion": [
+          "08",
+          "06"
+        ]
+      },
+      "sad": {
+        "description": "伤心",
+        "priority": 2,
+        "motion": [
+          "04",
+          "03"
+        ]
+      },
+      "angry": {
+        "description": "生气",
+        "priority": 3,
+        "motion": [
+          "03",
+          "04"
+        ]
+      },
+      "surprised": {
+        "description": "惊讶",
+        "priority": 3,
+        "motion": [
+          "07",
+          "05"
+        ]
+      },
+      "thinking": {
+        "description": "思考",
+        "priority": 2,
+        "motion": [
+          "05",
+          "02"
+        ]
+      },
+      "think": {
+        "description": "思考(UI)",
+        "priority": 2,
+        "motion": [
+          "06",
+          "05"
+        ]
+      },
+      "smile": {
+        "description": "微笑",
+        "priority": 2,
+        "motion": [
+          "06",
+          "07"
+        ]
+      },
+      "blushing": {
+        "description": "脸红",
+        "priority": 2,
+        "motion": [
+          "06",
+          "05"
+        ]
+      },
+      "shake": {
+        "description": "摇头",
+        "priority": 2,
+        "motion": [
+          "04"
+        ]
+      },
+      "greet": {
+        "description": "打招呼",
+        "priority": 2,
+        "motion": [
+          "08",
+          "06"
+        ]
+      },
+      "agree": {
+        "description": "赞同",
+        "priority": 2,
+        "motion": [
+          "08",
+          "07"
+        ]
+      },
+      "disagree": {
+        "description": "否定",
+        "priority": 2,
+        "motion": [
+          "04",
+          "03"
+        ]
+      },
+      "scared": {
+        "description": "害怕",
+        "priority": 3,
+        "motion": [
+          "04",
+          "02"
+        ]
+      },
+      "excited": {
+        "description": "兴奋",
+        "priority": 3,
+        "motion": [
+          "08",
+          "05"
+        ]
+      },
+      "question": {
+        "description": "疑问",
+        "priority": 2,
+        "motion": [
+          "07",
+          "06"
+        ]
+      },
+      "cheer": {
+        "description": "欢呼",
+        "priority": 3,
+        "motion": [
+          "08",
+          "05"
+        ]
+      },
+      "disgust": {
+        "description": "厌恶",
+        "priority": 2,
+        "motion": [
+          "03",
+          "04"
+        ]
+      },
+      "speak": {
+        "description": "播报",
+        "priority": 2,
+        "motion": [
+          "06",
+          "07",
+          "03"
+        ]
+      },
+      "listen": {
+        "description": "收听",
+        "priority": 2,
+        "motion": [
+          "00_idle",
+          "04",
+          "06"
+        ]
+      },
+      "wakeup": {
+        "description": "唤醒",
+        "priority": 4,
+        "motion": [
+          "08",
+          "07"
+        ]
+      },
+      "path": "tororo_hijiki/tororo/runtime/tororo.model3.json"
     },
     "hiyori_pro_zh": {
       "path": "hiyori_pro_zh/runtime/hiyori_pro_t11.model3.json",
+      "neutral": {
+        "description": "中性/待机",
+        "priority": 1,
+        "motion": [
+          "hiyori_m01",
+          "hiyori_m02"
+        ]
+      },
       "happy": {
         "description": "开心",
         "priority": 2,
-        "expression": ["Happy"],
-        "motion": ["hiyori_m06"]
+        "motion": [
+          "hiyori_m06",
+          "hiyori_m04"
+        ]
       },
       "sad": {
         "description": "伤心",
         "priority": 2,
-        "expression": ["Sad"],
-        "motion": ["hiyori_m03"]
-      },
-      "neutral": {
-        "description": "中性/待机",
-        "priority": 1,
-        "expression": ["Neutral"],
-        "motion": ["hiyori_m01", "hiyori_m02", "hiyori_m07"]
-      },
-      "thinking": {
-        "description": "思考",
-        "priority": 2,
-        "expression": ["Neutral"],
-        "motion": ["hiyori_m05"]
-      },
-      "smile": {
-        "description": "微笑",
-        "priority": 2,
-        "expression": ["Happy"],
-        "motion": ["hiyori_m06"]
-      },
-      "blushing": {
-        "description": "脸红",
-        "priority": 2,
-        "expression": ["Happy"],
-        "motion": ["hiyori_m06"]
+        "motion": [
+          "hiyori_m03"
+        ]
       },
       "angry": {
         "description": "生气",
         "priority": 3,
-        "expression": ["Sad"],
-        "motion": ["hiyori_m03"]
+        "motion": [
+          "hiyori_m03",
+          "hiyori_m10"
+        ]
       },
       "surprised": {
         "description": "惊讶",
         "priority": 3,
-        "expression": ["Surprised"],
-        "motion": ["hiyori_m05"]
-      },
-      "shake": {
-        "description": "摇头",
-        "priority": 2,
-        "expression": ["Sad"],
-        "motion": ["hiyori_m08"]
-      },
-      "greet": {
-        "description": "打招呼",
-        "priority": 2,
-        "expression": ["Happy"],
-        "motion": ["hiyori_m04"]
-      },
-      "agree": {
-        "description": "赞同/点头",
-        "priority": 2,
-        "expression": ["Neutral"],
-        "motion": ["hiyori_m07"]
-      },
-      "disagree": {
-        "description": "否定/摇头",
-        "priority": 2,
-        "expression": ["Sad"],
-        "motion": ["hiyori_m08"]
-      },
-      "scared": {
-        "description": "害怕",
-        "priority": 3,
-        "expression": ["Surprised"],
-        "motion": ["hiyori_m05"]
-      },
-      "excited": {
-        "description": "兴奋",
-        "priority": 3,
-        "expression": ["Happy"],
-        "motion": ["hiyori_m06", "hiyori_m04"]
-      },
-      "question": {
-        "description": "疑问",
-        "priority": 2,
-        "expression": ["Surprised"],
-        "motion": ["hiyori_m05"]
-      },
-      "cheer": {
-        "description": "欢呼",
-        "priority": 3,
-        "expression": ["Happy"],
-        "motion": ["hiyori_m06", "hiyori_m04"]
-      },
-      "disgust": {
-        "description": "厌恶",
-        "priority": 2,
-        "expression": ["Sad"],
-        "motion": ["hiyori_m03"]
-      }
-    },
-    "tororo": {
-      "path": "tororo/runtime/tororo.model3.json",
-      "happy": {
-        "description": "开心",
-        "priority": 2,
-        "expression": ["Happy"],
-        "motion": ["07"]
-      },
-      "sad": {
-        "description": "伤心",
-        "priority": 2,
-        "expression": ["Sad"],
-        "motion": ["04"]
-      },
-      "neutral": {
-        "description": "中性/待机",
-        "priority": 1,
-        "expression": ["Neutral"],
-        "motion": ["00_idle", "05", "06"]
+        "motion": [
+          "hiyori_m06",
+          "hiyori_m05"
+        ]
       },
       "thinking": {
         "description": "思考",
         "priority": 2,
-        "expression": ["Neutral"],
-        "motion": ["06"]
+        "motion": [
+          "hiyori_m05",
+          "hiyori_m02"
+        ]
+      },
+      "think": {
+        "description": "思考(UI)",
+        "priority": 2,
+        "motion": [
+          "hiyori_m05",
+          "hiyori_m03"
+        ]
       },
       "smile": {
         "description": "微笑",
         "priority": 2,
-        "expression": ["Happy"],
-        "motion": ["05"]
+        "motion": [
+          "hiyori_m06",
+          "hiyori_m04"
+        ]
       },
       "blushing": {
         "description": "脸红",
         "priority": 2,
-        "expression": ["Happy"],
-        "motion": ["05"]
-      },
-      "angry": {
-        "description": "生气",
-        "priority": 3,
-        "expression": ["Sad"],
-        "motion": ["04"]
-      },
-      "surprised": {
-        "description": "惊讶",
-        "priority": 3,
-        "expression": ["Neutral"],
-        "motion": ["06"]
+        "motion": [
+          "hiyori_m06",
+          "hiyori_m05"
+        ]
       },
       "shake": {
         "description": "摇头",
         "priority": 2,
-        "expression": ["Sad"],
-        "motion": ["04"]
+        "motion": [
+          "hiyori_m08",
+          "hiyori_m10"
+        ]
       },
       "greet": {
         "description": "打招呼",
         "priority": 2,
-        "expression": ["Happy"],
-        "motion": ["05"]
+        "motion": [
+          "hiyori_m04"
+        ]
       },
       "agree": {
-        "description": "赞同/点头",
+        "description": "赞同",
         "priority": 2,
-        "expression": ["Happy"],
-        "motion": ["07"]
+        "motion": [
+          "hiyori_m07",
+          "hiyori_m09"
+        ]
       },
       "disagree": {
-        "description": "否定/摇头",
+        "description": "否定",
         "priority": 2,
-        "expression": ["Sad"],
-        "motion": ["04"]
+        "motion": [
+          "hiyori_m08"
+        ]
       },
       "scared": {
         "description": "害怕",
         "priority": 3,
-        "expression": ["Sad"],
-        "motion": ["04"]
+        "motion": [
+          "hiyori_m05",
+          "hiyori_m06"
+        ]
       },
       "excited": {
         "description": "兴奋",
         "priority": 3,
-        "expression": ["Happy"],
-        "motion": ["07", "05"]
+        "motion": [
+          "hiyori_m06",
+          "hiyori_m07"
+        ]
       },
       "question": {
         "description": "疑问",
         "priority": 2,
-        "expression": ["Neutral"],
-        "motion": ["06"]
+        "motion": [
+          "hiyori_m05"
+        ]
       },
       "cheer": {
         "description": "欢呼",
         "priority": 3,
-        "expression": ["Happy"],
-        "motion": ["07", "05"]
+        "motion": [
+          "hiyori_m06",
+          "hiyori_m07"
+        ]
       },
       "disgust": {
         "description": "厌恶",
         "priority": 2,
-        "expression": ["Sad"],
-        "motion": ["04"]
+        "motion": [
+          "hiyori_m03",
+          "hiyori_m10"
+        ]
+      },
+      "speak": {
+        "description": "播报",
+        "priority": 2,
+        "motion": [
+          "hiyori_m07",
+          "hiyori_m06",
+          "hiyori_m04"
+        ]
+      },
+      "listen": {
+        "description": "收听",
+        "priority": 2,
+        "motion": [
+          "hiyori_m01",
+          "hiyori_m07"
+        ]
+      },
+      "wakeup": {
+        "description": "唤醒",
+        "priority": 4,
+        "motion": [
+          "hiyori_m06",
+          "hiyori_m04"
+        ]
       }
     },
     "shizuku": {
       "path": "shizuku/runtime/shizuku.model3.json",
+      "neutral": {
+        "description": "中性/待机",
+        "priority": 1,
+        "motion": [
+          "04"
+        ]
+      },
       "happy": {
         "description": "开心",
         "priority": 2,
-        "expression": ["Happy"],
-        "motion": ["06"]
+        "motion": [
+          "01",
+          "04"
+        ]
       },
       "sad": {
         "description": "伤心",
         "priority": 2,
-        "expression": ["Sad"],
-        "motion": ["04"]
-      },
-      "neutral": {
-        "description": "中性/待机",
-        "priority": 1,
-        "expression": ["Neutral"],
-        "motion": ["Idle", "04", "05"]
-      },
-      "thinking": {
-        "description": "思考",
-        "priority": 2,
-        "expression": ["Neutral"],
-        "motion": ["05"]
-      },
-      "smile": {
-        "description": "微笑",
-        "priority": 2,
-        "expression": ["Happy"],
-        "motion": ["04"]
-      },
-      "blushing": {
-        "description": "脸红",
-        "priority": 2,
-        "expression": ["Happy"],
-        "motion": ["04"]
+        "motion": [
+          "03",
+          "02"
+        ]
       },
       "angry": {
         "description": "生气",
         "priority": 3,
-        "expression": ["Sad"],
-        "motion": ["04"]
+        "motion": [
+          "03",
+          "02"
+        ]
       },
       "surprised": {
         "description": "惊讶",
         "priority": 3,
-        "expression": ["Neutral"],
-        "motion": ["05"]
+        "motion": [
+          "01",
+          "04"
+        ]
+      },
+      "thinking": {
+        "description": "思考",
+        "priority": 2,
+        "motion": [
+          "02",
+          "03"
+        ]
+      },
+      "think": {
+        "description": "思考(UI)",
+        "priority": 2,
+        "motion": [
+          "03",
+          "02"
+        ]
+      },
+      "smile": {
+        "description": "微笑",
+        "priority": 2,
+        "motion": [
+          "01",
+          "02"
+        ]
+      },
+      "blushing": {
+        "description": "脸红",
+        "priority": 2,
+        "motion": [
+          "01",
+          "04"
+        ]
       },
       "shake": {
         "description": "摇头",
         "priority": 2,
-        "expression": ["Neutral"],
-        "motion": ["07"]
+        "motion": [
+          "03"
+        ]
       },
       "greet": {
         "description": "打招呼",
         "priority": 2,
-        "expression": ["Happy"],
-        "motion": ["04"]
+        "motion": [
+          "01",
+          "04"
+        ]
       },
       "agree": {
-        "description": "赞同/点头",
+        "description": "赞同",
         "priority": 2,
-        "expression": ["Happy"],
-        "motion": ["06"]
+        "motion": [
+          "01",
+          "04"
+        ]
       },
       "disagree": {
-        "description": "否定/摇头",
+        "description": "否定",
         "priority": 2,
-        "expression": ["Neutral"],
-        "motion": ["07"]
+        "motion": [
+          "03",
+          "02"
+        ]
       },
       "scared": {
         "description": "害怕",
         "priority": 3,
-        "expression": ["Sad"],
-        "motion": ["04"]
+        "motion": [
+          "03",
+          "02"
+        ]
       },
       "excited": {
         "description": "兴奋",
         "priority": 3,
-        "expression": ["Happy"],
-        "motion": ["06", "04"]
+        "motion": [
+          "01",
+          "02"
+        ]
       },
       "question": {
         "description": "疑问",
         "priority": 2,
-        "expression": ["Neutral"],
-        "motion": ["05"]
+        "motion": [
+          "02"
+        ]
       },
       "cheer": {
         "description": "欢呼",
         "priority": 3,
-        "expression": ["Happy"],
-        "motion": ["06", "04"]
+        "motion": [
+          "01",
+          "02"
+        ]
       },
       "disgust": {
         "description": "厌恶",
         "priority": 2,
-        "expression": ["Sad"],
-        "motion": ["04"]
+        "motion": [
+          "03"
+        ]
+      },
+      "speak": {
+        "description": "播报",
+        "priority": 2,
+        "motion": [
+          "02",
+          "04"
+        ]
+      },
+      "listen": {
+        "description": "收听",
+        "priority": 2,
+        "motion": [
+          "04",
+          "02"
+        ]
+      },
+      "wakeup": {
+        "description": "唤醒",
+        "priority": 4,
+        "motion": [
+          "01",
+          "02"
+        ]
+      }
+    },
+    "haru_greeter_pro_jp": {
+      "path": "haru_greeter_pro_jp/runtime/haru_greeter_t05.model3.json",
+      "neutral": {
+        "description": "中性/待机",
+        "priority": 1,
+        "motion": [
+          "haru_g_idle",
+          "haru_g_m01"
+        ]
+      },
+      "happy": {
+        "description": "开心",
+        "priority": 2,
+        "motion": [
+          "haru_g_m06",
+          "haru_g_m07",
+          "haru_g_m08"
+        ]
+      },
+      "sad": {
+        "description": "伤心",
+        "priority": 2,
+        "motion": [
+          "haru_g_m04",
+          "haru_g_m05"
+        ]
+      },
+      "angry": {
+        "description": "生气",
+        "priority": 3,
+        "motion": [
+          "haru_g_m03",
+          "haru_g_m09"
+        ]
+      },
+      "surprised": {
+        "description": "惊讶",
+        "priority": 3,
+        "motion": [
+          "haru_g_m10",
+          "haru_g_m11"
+        ]
+      },
+      "thinking": {
+        "description": "思考",
+        "priority": 2,
+        "motion": [
+          "haru_g_m05",
+          "haru_g_m06"
+        ]
+      },
+      "think": {
+        "description": "思考(UI)",
+        "priority": 2,
+        "motion": [
+          "haru_g_m05",
+          "haru_g_m06"
+        ]
+      },
+      "smile": {
+        "description": "微笑",
+        "priority": 2,
+        "motion": [
+          "haru_g_m06",
+          "haru_g_m07"
+        ]
+      },
+      "blushing": {
+        "description": "脸红",
+        "priority": 2,
+        "motion": [
+          "haru_g_m08",
+          "haru_g_m07"
+        ]
+      },
+      "shake": {
+        "description": "摇头",
+        "priority": 2,
+        "motion": [
+          "haru_g_m04"
+        ]
+      },
+      "greet": {
+        "description": "打招呼",
+        "priority": 2,
+        "motion": [
+          "haru_g_m02",
+          "haru_g_m03"
+        ]
+      },
+      "agree": {
+        "description": "赞同",
+        "priority": 2,
+        "motion": [
+          "haru_g_m06",
+          "haru_g_m07"
+        ]
+      },
+      "disagree": {
+        "description": "否定",
+        "priority": 2,
+        "motion": [
+          "haru_g_m04",
+          "haru_g_m05"
+        ]
+      },
+      "scared": {
+        "description": "害怕",
+        "priority": 3,
+        "motion": [
+          "haru_g_m12",
+          "haru_g_m09"
+        ]
+      },
+      "excited": {
+        "description": "兴奋",
+        "priority": 3,
+        "motion": [
+          "haru_g_m06",
+          "haru_g_m07"
+        ]
+      },
+      "question": {
+        "description": "疑问",
+        "priority": 2,
+        "motion": [
+          "haru_g_m05",
+          "haru_g_m10"
+        ]
+      },
+      "cheer": {
+        "description": "欢呼",
+        "priority": 3,
+        "motion": [
+          "haru_g_m08",
+          "haru_g_m06"
+        ]
+      },
+      "disgust": {
+        "description": "厌恶",
+        "priority": 2,
+        "motion": [
+          "haru_g_m09",
+          "haru_g_m03"
+        ]
+      },
+      "speak": {
+        "description": "播报",
+        "priority": 2,
+        "motion": [
+          "haru_g_m06",
+          "haru_g_m07",
+          "haru_g_m08"
+        ]
+      },
+      "listen": {
+        "description": "收听",
+        "priority": 2,
+        "motion": [
+          "haru_g_idle",
+          "haru_g_m01"
+        ]
+      },
+      "wakeup": {
+        "description": "唤醒",
+        "priority": 4,
+        "motion": [
+          "haru_g_m06",
+          "haru_g_m02"
+        ]
+      }
+    },
+    "kei_en/kei_basic_free": {
+      "path": "kei_en/kei_basic_free/runtime/kei_basic_free.model3.json",
+      "neutral": {
+        "description": "中性/待机",
+        "priority": 1,
+        "motion": [
+          "01_kei_en"
+        ]
+      },
+      "speak": {
+        "description": "播报",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_jp",
+          "01_kei_ko",
+          "01_kei_zh"
+        ]
+      },
+      "listen": {
+        "description": "收听",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_en"
+        ]
+      },
+      "wakeup": {
+        "description": "唤醒",
+        "priority": 4,
+        "motion": [
+          "01_kei_en",
+          "01_kei_jp",
+          "01_kei_ko",
+          "01_kei_zh"
+        ]
+      },
+      "happy": {
+        "description": "开心",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_jp"
+        ]
+      },
+      "sad": {
+        "description": "伤心",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_ko"
+        ]
+      },
+      "angry": {
+        "description": "生气",
+        "priority": 3,
+        "motion": [
+          "01_kei_jp",
+          "01_kei_en"
+        ]
+      },
+      "surprised": {
+        "description": "惊讶",
+        "priority": 3,
+        "motion": [
+          "01_kei_ko",
+          "01_kei_en"
+        ]
+      },
+      "thinking": {
+        "description": "思考",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_en"
+        ]
+      },
+      "think": {
+        "description": "思考(UI)",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_jp"
+        ]
+      },
+      "smile": {
+        "description": "微笑",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_jp"
+        ]
+      },
+      "blushing": {
+        "description": "脸红",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_ko"
+        ]
+      },
+      "shake": {
+        "description": "摇头",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_jp"
+        ]
+      },
+      "greet": {
+        "description": "打招呼",
+        "priority": 2,
+        "motion": [
+          "01_kei_en"
+        ]
+      },
+      "agree": {
+        "description": "赞同",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_en"
+        ]
+      },
+      "disagree": {
+        "description": "否定",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_ko"
+        ]
+      },
+      "scared": {
+        "description": "害怕",
+        "priority": 3,
+        "motion": [
+          "01_kei_jp",
+          "01_kei_en"
+        ]
+      },
+      "excited": {
+        "description": "兴奋",
+        "priority": 3,
+        "motion": [
+          "01_kei_en",
+          "01_kei_jp"
+        ]
+      },
+      "question": {
+        "description": "疑问",
+        "priority": 2,
+        "motion": [
+          "01_kei_ko",
+          "01_kei_en"
+        ]
+      },
+      "cheer": {
+        "description": "欢呼",
+        "priority": 3,
+        "motion": [
+          "01_kei_en",
+          "01_kei_en"
+        ]
+      },
+      "disgust": {
+        "description": "厌恶",
+        "priority": 2,
+        "motion": [
+          "01_kei_jp",
+          "01_kei_en"
+        ]
+      }
+    },
+    "kei_en/kei_vowels_pro": {
+      "path": "kei_en/kei_vowels_pro/runtime/kei_vowels_pro.model3.json",
+      "neutral": {
+        "description": "中性/待机",
+        "priority": 1,
+        "motion": [
+          "01_kei_en"
+        ]
+      },
+      "speak": {
+        "description": "播报",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_jp",
+          "01_kei_ko",
+          "01_kei_zh"
+        ]
+      },
+      "listen": {
+        "description": "收听",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_en"
+        ]
+      },
+      "wakeup": {
+        "description": "唤醒",
+        "priority": 4,
+        "motion": [
+          "01_kei_en",
+          "01_kei_jp",
+          "01_kei_ko",
+          "01_kei_zh"
+        ]
+      },
+      "happy": {
+        "description": "开心",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_jp"
+        ]
+      },
+      "sad": {
+        "description": "伤心",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_ko"
+        ]
+      },
+      "angry": {
+        "description": "生气",
+        "priority": 3,
+        "motion": [
+          "01_kei_jp",
+          "01_kei_en"
+        ]
+      },
+      "surprised": {
+        "description": "惊讶",
+        "priority": 3,
+        "motion": [
+          "01_kei_ko",
+          "01_kei_en"
+        ]
+      },
+      "thinking": {
+        "description": "思考",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_en"
+        ]
+      },
+      "think": {
+        "description": "思考(UI)",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_jp"
+        ]
+      },
+      "smile": {
+        "description": "微笑",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_jp"
+        ]
+      },
+      "blushing": {
+        "description": "脸红",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_ko"
+        ]
+      },
+      "shake": {
+        "description": "摇头",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_jp"
+        ]
+      },
+      "greet": {
+        "description": "打招呼",
+        "priority": 2,
+        "motion": [
+          "01_kei_en"
+        ]
+      },
+      "agree": {
+        "description": "赞同",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_en"
+        ]
+      },
+      "disagree": {
+        "description": "否定",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_ko"
+        ]
+      },
+      "scared": {
+        "description": "害怕",
+        "priority": 3,
+        "motion": [
+          "01_kei_jp",
+          "01_kei_en"
+        ]
+      },
+      "excited": {
+        "description": "兴奋",
+        "priority": 3,
+        "motion": [
+          "01_kei_en",
+          "01_kei_jp"
+        ]
+      },
+      "question": {
+        "description": "疑问",
+        "priority": 2,
+        "motion": [
+          "01_kei_ko",
+          "01_kei_en"
+        ]
+      },
+      "cheer": {
+        "description": "欢呼",
+        "priority": 3,
+        "motion": [
+          "01_kei_en",
+          "01_kei_en"
+        ]
+      },
+      "disgust": {
+        "description": "厌恶",
+        "priority": 2,
+        "motion": [
+          "01_kei_jp",
+          "01_kei_en"
+        ]
+      }
+    },
+    "kei_zh/kei_basic_free": {
+      "path": "kei_zh/kei_basic_free/runtime/kei_basic_free.model3.json",
+      "neutral": {
+        "description": "中性/待机",
+        "priority": 1,
+        "motion": [
+          "01_kei_zh"
+        ]
+      },
+      "speak": {
+        "description": "播报",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_jp",
+          "01_kei_ko",
+          "01_kei_zh"
+        ]
+      },
+      "listen": {
+        "description": "收听",
+        "priority": 2,
+        "motion": [
+          "01_kei_zh",
+          "01_kei_en"
+        ]
+      },
+      "wakeup": {
+        "description": "唤醒",
+        "priority": 4,
+        "motion": [
+          "01_kei_en",
+          "01_kei_jp",
+          "01_kei_ko",
+          "01_kei_zh"
+        ]
+      },
+      "happy": {
+        "description": "开心",
+        "priority": 2,
+        "motion": [
+          "01_kei_zh",
+          "01_kei_jp"
+        ]
+      },
+      "sad": {
+        "description": "伤心",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_ko"
+        ]
+      },
+      "angry": {
+        "description": "生气",
+        "priority": 3,
+        "motion": [
+          "01_kei_jp",
+          "01_kei_zh"
+        ]
+      },
+      "surprised": {
+        "description": "惊讶",
+        "priority": 3,
+        "motion": [
+          "01_kei_ko",
+          "01_kei_zh"
+        ]
+      },
+      "thinking": {
+        "description": "思考",
+        "priority": 2,
+        "motion": [
+          "01_kei_zh",
+          "01_kei_en"
+        ]
+      },
+      "think": {
+        "description": "思考(UI)",
+        "priority": 2,
+        "motion": [
+          "01_kei_zh",
+          "01_kei_jp"
+        ]
+      },
+      "smile": {
+        "description": "微笑",
+        "priority": 2,
+        "motion": [
+          "01_kei_zh",
+          "01_kei_jp"
+        ]
+      },
+      "blushing": {
+        "description": "脸红",
+        "priority": 2,
+        "motion": [
+          "01_kei_zh",
+          "01_kei_ko"
+        ]
+      },
+      "shake": {
+        "description": "摇头",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_jp"
+        ]
+      },
+      "greet": {
+        "description": "打招呼",
+        "priority": 2,
+        "motion": [
+          "01_kei_zh"
+        ]
+      },
+      "agree": {
+        "description": "赞同",
+        "priority": 2,
+        "motion": [
+          "01_kei_zh",
+          "01_kei_en"
+        ]
+      },
+      "disagree": {
+        "description": "否定",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_ko"
+        ]
+      },
+      "scared": {
+        "description": "害怕",
+        "priority": 3,
+        "motion": [
+          "01_kei_jp",
+          "01_kei_zh"
+        ]
+      },
+      "excited": {
+        "description": "兴奋",
+        "priority": 3,
+        "motion": [
+          "01_kei_zh",
+          "01_kei_jp"
+        ]
+      },
+      "question": {
+        "description": "疑问",
+        "priority": 2,
+        "motion": [
+          "01_kei_ko",
+          "01_kei_zh"
+        ]
+      },
+      "cheer": {
+        "description": "欢呼",
+        "priority": 3,
+        "motion": [
+          "01_kei_zh",
+          "01_kei_en"
+        ]
+      },
+      "disgust": {
+        "description": "厌恶",
+        "priority": 2,
+        "motion": [
+          "01_kei_jp",
+          "01_kei_zh"
+        ]
+      }
+    },
+    "kei_zh/kei_vowels_pro": {
+      "path": "kei_zh/kei_vowels_pro/runtime/kei_vowels_pro.model3.json",
+      "neutral": {
+        "description": "中性/待机",
+        "priority": 1,
+        "motion": [
+          "01_kei_zh"
+        ]
+      },
+      "speak": {
+        "description": "播报",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_jp",
+          "01_kei_ko",
+          "01_kei_zh"
+        ]
+      },
+      "listen": {
+        "description": "收听",
+        "priority": 2,
+        "motion": [
+          "01_kei_zh",
+          "01_kei_en"
+        ]
+      },
+      "wakeup": {
+        "description": "唤醒",
+        "priority": 4,
+        "motion": [
+          "01_kei_en",
+          "01_kei_jp",
+          "01_kei_ko",
+          "01_kei_zh"
+        ]
+      },
+      "happy": {
+        "description": "开心",
+        "priority": 2,
+        "motion": [
+          "01_kei_zh",
+          "01_kei_jp"
+        ]
+      },
+      "sad": {
+        "description": "伤心",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_ko"
+        ]
+      },
+      "angry": {
+        "description": "生气",
+        "priority": 3,
+        "motion": [
+          "01_kei_jp",
+          "01_kei_zh"
+        ]
+      },
+      "surprised": {
+        "description": "惊讶",
+        "priority": 3,
+        "motion": [
+          "01_kei_ko",
+          "01_kei_zh"
+        ]
+      },
+      "thinking": {
+        "description": "思考",
+        "priority": 2,
+        "motion": [
+          "01_kei_zh",
+          "01_kei_en"
+        ]
+      },
+      "think": {
+        "description": "思考(UI)",
+        "priority": 2,
+        "motion": [
+          "01_kei_zh",
+          "01_kei_jp"
+        ]
+      },
+      "smile": {
+        "description": "微笑",
+        "priority": 2,
+        "motion": [
+          "01_kei_zh",
+          "01_kei_jp"
+        ]
+      },
+      "blushing": {
+        "description": "脸红",
+        "priority": 2,
+        "motion": [
+          "01_kei_zh",
+          "01_kei_ko"
+        ]
+      },
+      "shake": {
+        "description": "摇头",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_jp"
+        ]
+      },
+      "greet": {
+        "description": "打招呼",
+        "priority": 2,
+        "motion": [
+          "01_kei_zh"
+        ]
+      },
+      "agree": {
+        "description": "赞同",
+        "priority": 2,
+        "motion": [
+          "01_kei_zh",
+          "01_kei_en"
+        ]
+      },
+      "disagree": {
+        "description": "否定",
+        "priority": 2,
+        "motion": [
+          "01_kei_en",
+          "01_kei_ko"
+        ]
+      },
+      "scared": {
+        "description": "害怕",
+        "priority": 3,
+        "motion": [
+          "01_kei_jp",
+          "01_kei_zh"
+        ]
+      },
+      "excited": {
+        "description": "兴奋",
+        "priority": 3,
+        "motion": [
+          "01_kei_zh",
+          "01_kei_jp"
+        ]
+      },
+      "question": {
+        "description": "疑问",
+        "priority": 2,
+        "motion": [
+          "01_kei_ko",
+          "01_kei_zh"
+        ]
+      },
+      "cheer": {
+        "description": "欢呼",
+        "priority": 3,
+        "motion": [
+          "01_kei_zh",
+          "01_kei_en"
+        ]
+      },
+      "disgust": {
+        "description": "厌恶",
+        "priority": 2,
+        "motion": [
+          "01_kei_jp",
+          "01_kei_zh"
+        ]
       }
     }
   }

@@ -8,6 +8,7 @@ from fastapi import APIRouter, UploadFile, File, Form, Request, HTTPException, B
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import logging
+from pathlib import Path
 
 from config import update_settings, settings as app_settings
 
@@ -29,6 +30,20 @@ def init_api_routes(voice_proc, conn_manager):
 # 声纹存储目录
 VOICEPRINT_DIR = "voiceprints"
 LIVE2D_MODELS_DIR = "live2d_models"
+
+
+def _live2d_model_entry_name(top_folder: str, model_file: str, is_only_file_in_tree: bool) -> str:
+    """与 model_dict.json 的 key 一致：单入口模型用顶层目录名；多入口用 parent/runtime 上一级路径。"""
+    if is_only_file_in_tree:
+        return top_folder
+    rel = os.path.relpath(model_file, os.path.abspath(LIVE2D_MODELS_DIR)).replace("\\", "/")
+    parts = rel.split("/")
+    if len(parts) >= 3 and parts[-2] == "runtime":
+        return "/".join(parts[:-2])
+    if rel.endswith(".model3.json"):
+        return rel[: -len(".model3.json")]
+    return rel
+
 
 # 确保目录存在
 for directory in [VOICEPRINT_DIR, LIVE2D_MODELS_DIR]:
@@ -379,32 +394,39 @@ async def get_live2d_models():
                 "models": [],
                 "message": "Live2D模型目录不存在"
             }
-        
+
         models = []
-        
-        # 遍历live2d_models目录
-        for item in os.listdir(LIVE2D_MODELS_DIR):
-            item_path = os.path.join(LIVE2D_MODELS_DIR, item)
-            if os.path.isdir(item_path):
-                # 检查是否是Live2D模型目录（包含.model3.json文件）
-                model_files = []
-                for root, dirs, files in os.walk(item_path):
-                    for file in files:
-                        if file.endswith('.model3.json'):
-                            model_files.append(os.path.join(root, file))
-                
-                if model_files:
-                    # 使用第一个找到的model3.json文件
-                    model_file = model_files[0]
-                    model_info = {
-                        "name": item,
-                        "fileName": os.path.basename(model_file),
-                        "filePath": model_file,
-                        "fileType": "json",
-                        "uploadTime": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(os.path.getmtime(model_file)))
-                    }
-                    models.append(model_info)
-        
+        abs_live2d = os.path.abspath(LIVE2D_MODELS_DIR)
+
+        for item in sorted(os.listdir(LIVE2D_MODELS_DIR)):
+            item_path = os.path.join(abs_live2d, item)
+            if not os.path.isdir(item_path):
+                continue
+            model_files = []
+            for root, dirs, files in os.walk(item_path):
+                for file in files:
+                    if file.endswith(".model3.json"):
+                        model_files.append(os.path.join(root, file))
+            if not model_files:
+                continue
+            model_files.sort()
+
+            single = len(model_files) == 1
+            for model_file in model_files:
+                name = _live2d_model_entry_name(item, model_file, single)
+                try:
+                    under_live2d = Path(model_file).resolve().relative_to(Path(abs_live2d).resolve()).as_posix()
+                except ValueError:
+                    under_live2d = os.path.relpath(model_file, abs_live2d).replace("\\", "/")
+
+                models.append({
+                    "name": name,
+                    "fileName": os.path.basename(model_file),
+                    "filePath": under_live2d,
+                    "fileType": "json",
+                    "uploadTime": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(os.path.getmtime(model_file))),
+                })
+
         return {
             "success": True,
             "models": models,
@@ -419,7 +441,7 @@ async def get_live2d_models():
             "message": f"获取Live2D模型列表失败: {str(e)}"
         }
 
-@api_router.get("/live2d/model-config/{model_name}", summary="获取Live2D模型动画配置")
+@api_router.get("/live2d/model-config/{model_name:path}", summary="获取Live2D模型动画配置")
 async def get_live2d_model_config(model_name: str):
     """获取Live2D模型的动画配置"""
     try:
@@ -481,40 +503,39 @@ async def get_all_live2d_model_config():
             "message": f"获取模型配置失败: {str(e)}"
         }
 
-@api_router.delete("/live2d/models/{model_name}", summary="删除Live2D模型")
+@api_router.delete("/live2d/models/{model_name:path}", summary="删除Live2D模型")
 async def delete_live2d_model(model_name: str):
     """删除Live2D模型"""
     try:
-        # 安全验证：确保模型名称不包含路径遍历字符
-        if '..' in model_name or '/' in model_name or '\\' in model_name:
+        norm_key = model_name.replace("\\", "/").strip("/")
+        if not norm_key or any(p in ("..", "", ".") for p in norm_key.split("/")):
             return {
                 "success": False,
                 "message": "无效的模型名称"
             }
-        
-        model_dir = os.path.join(LIVE2D_MODELS_DIR, model_name)
-        
-        # 检查目录是否存在
-        if not os.path.exists(model_dir):
-            logger.warning(f"尝试删除不存在的模型目录: {model_dir}")
-            return {
-                "success": False,
-                "message": f"模型目录不存在: {model_name}"
-            }
-        
-        # 安全验证：确保路径在live2d_models目录内
-        abs_model_dir = os.path.abspath(model_dir)
+
         abs_live2d_dir = os.path.abspath(LIVE2D_MODELS_DIR)
-        
-        if not abs_model_dir.startswith(abs_live2d_dir):
-            logger.error(f"路径安全验证失败: {abs_model_dir} 不在 {abs_live2d_dir} 内")
+        abs_model_dir = os.path.normpath(os.path.join(abs_live2d_dir, *norm_key.split("/")))
+
+        try:
+            same_root = os.path.commonpath([abs_model_dir, abs_live2d_dir]) == abs_live2d_dir
+        except ValueError:
+            same_root = False
+        if not same_root:
+            logger.error(f"路径安全验证失败: {abs_model_dir} 不在 live2d_models 树下")
             return {
                 "success": False,
                 "message": "无效的模型路径"
             }
-        
-        # 删除模型目录
-        shutil.rmtree(model_dir)
+
+        if not os.path.exists(abs_model_dir):
+            logger.warning(f"尝试删除不存在的模型路径: {abs_model_dir}")
+            return {
+                "success": False,
+                "message": f"模型目录不存在: {model_name}"
+            }
+
+        shutil.rmtree(abs_model_dir)
         
         logger.info(f"Live2D模型已删除: {model_name}")
         

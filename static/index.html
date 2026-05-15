@@ -2984,13 +2984,18 @@
         // 加载实际的Live2D模型（使用pixi-live2d-display）
         async function loadLive2DModel(currentLive2DModel) {
             try {
-                // 异步加载Live2D模型
-                // currentLive2DModel.filePath这个下划线改成/
-                const filePath = currentLive2DModel.filePath.replace('_', '/');
-                
+                // filePath：相对 live2d_models 目录（例如 Epsilon/runtime/Epsilon.model3.json），挂载在 /live2d/models/
+                let relPath = (currentLive2DModel.filePath || '').replace(/\\/g, '/');
+                relPath = relPath.replace(/^\/+/, '');
+                const legacyStrip = /^live2d_models\//;
+                if (legacyStrip.test(relPath))
+                    relPath = relPath.replace(legacyStrip, '');
+
                 const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
                 const host = window.location.host;
-                const modelUrl = `${protocol}//${host}/${filePath}`;
+                const segs = relPath.split('/').filter(Boolean).map((s) => encodeURIComponent(s));
+                const modelUrl = `${protocol}//${host}/live2d/models/${segs.join('/')}`;
+
 
                 if (live2dModel) {
                     app.stage.removeChild(live2dModel);
@@ -3064,7 +3069,7 @@
             try {
                 const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
                 const host = window.location.host;
-                const response = await fetch(`${protocol}//${host}/api/live2d/model-config/${modelName}`);
+                const response = await fetch(`${protocol}//${host}/api/live2d/model-config/${encodeURIComponent(modelName)}`);
                 const result = await response.json();
                 
                 if (result.success) {
@@ -3255,7 +3260,7 @@
             try {
                 const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
                 const host = window.location.host;
-                const response = await fetch(`${protocol}//${host}/api/live2d/models/${modelName}`, {
+                const response = await fetch(`${protocol}//${host}/api/live2d/models/${encodeURIComponent(modelName)}`, {
                     method: 'DELETE'
                 });
                 
