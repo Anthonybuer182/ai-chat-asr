@@ -13,18 +13,18 @@ from config import settings
 
 SENTENCE_ENDINGS = re.compile(r'[。！？!?…]+')
 ASR_TAG_PATTERN = re.compile(r'<\|[^|]+\|>')
-# Live2D 控制标签，与 voice_processor 中提示一致；TTS 无特殊语义，若不剔除会整段朗读
-LIVE2D_EMOTION_TAG_PATTERN = re.compile(r'\[EMOTION:\w+\]', re.IGNORECASE)
+from live2d_prompt import (
+    allowed_emotions_frozenset,
+    clean_llm_reply_for_history,
+    parse_current_live2d_model_key_from_settings,
+    sanitize_emotion_tags,
+    strip_emotion_tags as strip_emotion_tags_for_tts,
+)
+
 SILENCE_THRESHOLD = 0.8   # 静音多少秒后触发 ASR
 MIN_SPEECH_BYTES = 3200   # 最少 200ms 的 16kHz int16 音频才送 ASR
 
 logger = logging.getLogger(__name__)
-
-def strip_emotion_tags_for_tts(text: str) -> str:
-    """去掉情绪控制标签后再送 TTS，避免朗读方括号与英文词。"""
-    if not text:
-        return ''
-    return LIVE2D_EMOTION_TAG_PATTERN.sub('', text).strip()
 
 # 全局变量（将在main.py中注入）
 voice_processor: VoiceProcessor = None
@@ -189,32 +189,39 @@ def create_wav_header(audio_bytes: bytes, sample_rate: int = 24000, num_channels
     
     return buffer.getvalue()
 
-async def handle_tts_request(sentence: str, client_id: str, websocket: WebSocket):
-    """处理TTS请求"""
+async def handle_tts_request(
+    sentence_raw: str,
+    client_id: str,
+    websocket: WebSocket,
+    allowed_emotions,
+):
+    """对 LLM 片段做标签白名单清洗；TTS 用净文本；前端用带合法标签的副本驱动 Live2D。"""
     try:
-        sentence = strip_emotion_tags_for_tts(sentence)
-        if not sentence:
+        cleaned_tags = sanitize_emotion_tags(sentence_raw or "", allowed_emotions)
+        tts_plain = strip_emotion_tags_for_tts(cleaned_tags)
+        if not tts_plain:
             return
 
         tts_model = getattr(settings, 'TTS_MODEL', 'ChatTTS')
 
         if tts_model == 'EdgeTTS':
-            await handle_edge_tts_request(sentence, websocket)
+            await handle_edge_tts_request(tts_plain, websocket, cleaned_tags)
         elif tts_model == 'MiniMax':
-            await handle_minimax_tts_request(sentence, websocket)
+            await handle_minimax_tts_request(tts_plain, websocket, cleaned_tags)
         else:
-            await handle_chat_tts_request(sentence, websocket)
-    
+            await handle_chat_tts_request(tts_plain, websocket, cleaned_tags)
+
     except Exception as e:
         logger.error(f"处理TTS请求错误: {e}")
+        plain = strip_emotion_tags_for_tts(sanitize_emotion_tags(sentence_raw or "", allowed_emotions))
         await websocket.send_json({
             'type': 'tts_error',
-            'text': sentence,
+            'text': plain,
             'message': f'TTS处理错误: {str(e)}',
             'timestamp': time.time()
         })
 
-async def handle_chat_tts_request(sentence: str, websocket: WebSocket):
+async def handle_chat_tts_request(sentence_plain: str, websocket: WebSocket, text_with_tags: str):
     """处理 ChatTTS 请求"""
     try:
         if not voice_processor or not voice_processor.tts_model:
@@ -225,7 +232,7 @@ async def handle_chat_tts_request(sentence: str, websocket: WebSocket):
             })
             return
         
-        texts = [sentence]
+        texts = [sentence_plain]
         
         params_infer_code = ChatTTS.Chat.InferCodeParams(
             spk_emb=voice_processor.rand_spk,
@@ -249,7 +256,8 @@ async def handle_chat_tts_request(sentence: str, websocket: WebSocket):
             await websocket.send_json({
                 'type': 'tts_audio',
                 'audio': audio_base64,
-                'text': sentence,
+                'text': sentence_plain,
+                'textWithTags': text_with_tags,
                 'message': 'ChatTTS音频生成成功',
                 'timestamp': time.time()
             })
@@ -263,12 +271,12 @@ async def handle_chat_tts_request(sentence: str, websocket: WebSocket):
         logger.error(f"ChatTTS处理错误: {e}")
         await websocket.send_json({
             'type': 'tts_error',
-            'text': sentence,
+            'text': sentence_plain,
             'message': f'ChatTTS处理错误: {str(e)}',
             'timestamp': time.time()
         })
 
-async def handle_minimax_tts_request(sentence: str, websocket: WebSocket):
+async def handle_minimax_tts_request(sentence_plain: str, websocket: WebSocket, text_with_tags: str):
     """处理 MiniMax 云端 TTS（返回 WAV 二进制，与 Edge 路径一致送前端 base64）"""
     try:
         if not voice_processor:
@@ -287,14 +295,15 @@ async def handle_minimax_tts_request(sentence: str, websocket: WebSocket):
             })
             return
 
-        wav_data = await voice_processor.generate_minimax_tts(sentence)
+        wav_data = await voice_processor.generate_minimax_tts(sentence_plain)
 
         if wav_data:
             audio_base64 = base64.b64encode(wav_data).decode('utf-8')
             await websocket.send_json({
                 'type': 'tts_audio',
                 'audio': audio_base64,
-                'text': sentence,
+                'text': sentence_plain,
+                'textWithTags': text_with_tags,
                 'message': 'MiniMax TTS生成成功',
                 'timestamp': time.time()
             })
@@ -308,12 +317,12 @@ async def handle_minimax_tts_request(sentence: str, websocket: WebSocket):
         logger.error(f"MiniMax TTS处理错误: {e}")
         await websocket.send_json({
             'type': 'tts_error',
-            'text': sentence,
+            'text': sentence_plain,
             'message': f'MiniMax TTS处理错误: {str(e)}',
             'timestamp': time.time()
         })
 
-async def handle_edge_tts_request(sentence: str, websocket: WebSocket):
+async def handle_edge_tts_request(sentence_plain: str, websocket: WebSocket, text_with_tags: str):
     """处理 EdgeTTS 请求"""
     try:
         if not voice_processor:
@@ -324,14 +333,15 @@ async def handle_edge_tts_request(sentence: str, websocket: WebSocket):
             })
             return
         
-        wav_data = await voice_processor.generate_edge_tts(sentence)
+        wav_data = await voice_processor.generate_edge_tts(sentence_plain)
         
         if wav_data:
             audio_base64 = base64.b64encode(wav_data).decode('utf-8')
             await websocket.send_json({
                 'type': 'tts_audio',
                 'audio': audio_base64,
-                'text': sentence,
+                'text': sentence_plain,
+                'textWithTags': text_with_tags,
                 'message': 'EdgeTTS音频生成成功',
                 'timestamp': time.time()
             })
@@ -345,7 +355,7 @@ async def handle_edge_tts_request(sentence: str, websocket: WebSocket):
         logger.error(f"EdgeTTS处理错误: {e}")
         await websocket.send_json({
             'type': 'tts_error',
-            'text': sentence,
+            'text': sentence_plain,
             'message': f'EdgeTTS处理错误: {str(e)}',
             'timestamp': time.time()
         })
@@ -403,14 +413,14 @@ async def _run_speech_pipeline(audio_data: bytes, client_id: str, websocket: Web
             manager.user_data[client_id]['is_processing'] = False
 
 
-async def tts_worker(queue: asyncio.Queue, client_id: str, websocket: WebSocket):
+async def tts_worker(queue: asyncio.Queue, client_id: str, websocket: WebSocket, allowed_emotions):
     """从队列中依次取句子生成并发送 TTS 音频"""
     while True:
         sentence = await queue.get()
         if sentence is None:
             break
         try:
-            await handle_tts_request(sentence, client_id, websocket)
+            await handle_tts_request(sentence, client_id, websocket, allowed_emotions)
         except Exception as e:
             logger.error(f"TTS worker 错误 - 客户端 {client_id}: {e}")
 
@@ -448,6 +458,14 @@ async def process_speech(audio_data: bytes, client_id: str, websocket: WebSocket
             })
             return
 
+        live_key = parse_current_live2d_model_key_from_settings(settings)
+        allowed = allowed_emotions_frozenset(live_key)
+        logger.info(
+            "Live2D→LLM: model_key=%s, 可用情绪种类=%s",
+            live_key or "(未绑定)",
+            len(allowed),
+        )
+
         await websocket.send_json({
             'type': 'llm_stream_start',
             'text': recognized_text,
@@ -456,7 +474,7 @@ async def process_speech(audio_data: bytes, client_id: str, websocket: WebSocket
         })
 
         tts_queue: asyncio.Queue = asyncio.Queue()
-        tts_task = asyncio.create_task(tts_worker(tts_queue, client_id, websocket))
+        tts_task = asyncio.create_task(tts_worker(tts_queue, client_id, websocket, allowed))
 
         llm_response = ""
         sentence_buffer = ""
@@ -470,7 +488,9 @@ async def process_speech(audio_data: bytes, client_id: str, websocket: WebSocket
 
         llm_stream_ok = False
         try:
-            async for chunk in voice_processor.stream_llm_response(recognized_text, conversation_history):
+            async for chunk in voice_processor.stream_llm_response(
+                recognized_text, conversation_history, live2d_model_key=live_key
+            ):
                 llm_response += chunk
                 sentence_buffer += chunk
                 while SENTENCE_ENDINGS.search(sentence_buffer):
@@ -505,12 +525,13 @@ async def process_speech(audio_data: bytes, client_id: str, websocket: WebSocket
                     pass
 
         if llm_stream_ok:
+            hist_text = clean_llm_reply_for_history(llm_response, allowed)
             conversation_history.append({
                 'type': 'assistant',
-                'text': llm_response,
+                'text': hist_text,
                 'timestamp': time.time()
             })
-            logger.info(f"LLM回复 - 客户端 {client_id}: {llm_response[:60]}...")
+            logger.info(f"LLM回复(入库已剥标签) - 客户端 {client_id}: {hist_text[:60]}...")
 
     except Exception as e:
         logger.error(f"语音处理管道错误 - 客户端 {client_id}: {e}")

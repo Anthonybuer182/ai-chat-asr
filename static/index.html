@@ -1415,6 +1415,7 @@
                     addToAudioQueue({
                         audio: data.audio,
                         text: data.text || data.message || '',
+                        textWithTags: data.textWithTags,
                         timestamp: data.timestamp
                     });
                 }
@@ -1455,8 +1456,15 @@
             });
             triggerLive2DAnimation('speak');
             
-            if (audioItem.text) {
-                currentReplyText += audioItem.text;
+            const taggedForTyping = (audioItem.textWithTags != null && String(audioItem.textWithTags).length > 0)
+                ? String(audioItem.textWithTags)
+                : String(audioItem.text || '');
+            const bubblePlain = (audioItem.text != null && String(audioItem.text).length > 0)
+                ? String(audioItem.text)
+                : stripEmotionTagsForDisplay(taggedForTyping);
+
+            if (bubblePlain.length || taggedForTyping.length) {
+                currentReplyText += bubblePlain;
                 if (!currentStreamingMessage) {
                     console.log('创建新的流式消息');
                     currentStreamingMessage = createStreamingMessage();
@@ -1471,7 +1479,7 @@
                         cursor.remove();
                     }
                     
-                    pendingText += audioItem.text;
+                    pendingText += taggedForTyping;
                     if (!typingInterval) {
                         startTypingEffect();
                     }
@@ -1490,9 +1498,10 @@
                 const source = currentAudioContext.createBufferSource();
                 source.buffer = audioBuffer;
                 
-                startLipSync(source, currentAudioContext);
-                
-                source.connect(currentAudioContext.destination);
+                const lipSyncHandledOutput = startLipSync(source, currentAudioContext);
+                if (!lipSyncHandledOutput) {
+                    source.connect(currentAudioContext.destination);
+                }
                 
                 source.onended = () => {
                     stopLipSync();
@@ -1919,12 +1928,13 @@
             return analyser;
         }
         
+        /** @returns {boolean} 若已接通「source → analyser → destination」，则不要再对 source.connect(destination)，否则会重复出声 */
         function startLipSync(audioSource, audioContext) {
             console.log('=== startLipSync ===', { hasLive2dModel: !!live2dModel });
             
             if (!live2dModel) {
                 console.log('没有加载Live2D模型');
-                return;
+                return false;
             }
             
             stopLipSync();
@@ -1976,6 +1986,7 @@
             }
             
             updateLipSync();
+            return true;
         }
         
         function stopLipSync() {

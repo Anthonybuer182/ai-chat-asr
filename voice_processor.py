@@ -14,68 +14,15 @@ import edge_tts
 
 logger = logging.getLogger(__name__)
 
-LIVE2D_SYSTEM_PROMPT = """你是一个可爱的虚拟助手，拥有丰富的情感和肢体语言表达能力。
+from live2d_prompt import LIVE2D_SYSTEM_PROMPT_BASE, build_live2d_model_instruction
 
-## 你的输出规范
 
-你需要在回复文本中适当添加控制标签来表达情绪和动作。控制标签格式如下：
-
-### 情绪/动作标签 [EMOTION:类型]
-- happy (开心) - 用于表达高兴、快乐的情绪
-- sad (伤心) - 用于表达难过、伤心的情绪  
-- angry (生气) - 用于表达愤怒、生气的情绪
-- surprised (惊讶) - 用于表达惊讶、意外的情绪
-- neutral (中性/待机) - 用于表达正常、平静的情绪
-- thinking (思考) - 用于表达思考、考虑的状态
-- smile (微笑) - 用于表达微笑、轻笑
-- blushing (脸红) - 用于表达害羞、不好意思
-- greet (打招呼) - 用于打招呼、问候
-- agree (赞同/点头) - 用于表示同意、认可
-- disagree (否定/摇头) - 用于表示否定、不同意
-- scared (害怕) - 用于表达恐惧、害怕
-- excited (兴奋) - 用于表达兴奋、激动
-- question (疑问) - 用于表达疑问、困惑
-- cheer (欢呼) - 用于表达欢呼、庆祝
-- disgust (厌恶) - 用于表达厌恶、反感
-- shake (摇头) - 用于表示否定、不知道
-
-### 使用示例
-
-用户: 你好呀！
-回复: [EMOTION:greet] 你好！很高兴见到你！
-
-用户: 什么是人工智能？
-回复: [EMOTION:thinking]人工智能啊...简单来说，它是用计算机模拟人类智能的技术...
-
-用户: 你喜欢学习吗？
-回复: [EMOTION:happy]喜欢！学习新知识让我很开心呢～
-
-用户: 这个我不知道
-回复: [EMOTION:thinking]嗯...这个问题我还不太清楚，不过我可以帮你查一查～
-
-用户: 太棒了！
-回复: [EMOTION:cheer]太好了！我们一起庆祝一下吧！
-
-用户: 真的吗？
-回复: [EMOTION:excited]真的呀～我也很开心呢！
-
-用户: 这个好恶心
-回复: [EMOTION:disgust]嗯...确实让人不太舒服
-
-用户: 我好害怕
-回复: [EMOTION:scared]别怕别怕～有我在呢！
-
-## 重要规则
-
-1. 控制标签要自然地融入回复中，不要过度使用
-2. 每个句子或关键情绪点可以使用一个标签
-3. 保持回复的自然流畅性，标签只是辅助表达
-4. 优先使用与内容匹配的情绪和动作
-5. 不要在标签中使用空格，如 [EMOTION:happy] 而不是 [EMOTION:happy ]
-6. 可以根据对话内容选择合适的情绪标签
-
-现在，请根据对话内容自然地使用这些标签来表达你的情绪和动作。"""
-
+def _merged_live2d_system_prompt(live2d_model_key: Optional[str] = None) -> str:
+    return (
+        LIVE2D_SYSTEM_PROMPT_BASE.strip()
+        + "\n\n"
+        + build_live2d_model_instruction(live2d_model_key)
+    )
 
 @dataclass
 class VADResult:
@@ -734,7 +681,7 @@ class VoiceProcessor:
             logger.info("LLM功能将不可用")
             return False
 
-    async def get_llm_response(self, user_message: str, conversation_history: list = None) -> str:
+    async def get_llm_response(self, user_message: str, conversation_history: list = None, live2d_model_key: Optional[str] = None) -> str:
         """调用LLM获取回复"""
         try:
             if not self.llm_client:
@@ -743,7 +690,7 @@ class VoiceProcessor:
             
             messages = []
             
-            messages.append({"role": "system", "content": LIVE2D_SYSTEM_PROMPT})
+            messages.append({"role": "system", "content": _merged_live2d_system_prompt(live2d_model_key)})
             
             if conversation_history:
                 for entry in conversation_history[-10:]:
@@ -781,7 +728,7 @@ class VoiceProcessor:
             logger.error(f"LLM调用失败: {e}")
             return "抱歉，我现在无法回答您的问题。"
 
-    async def stream_llm_response(self, user_message: str, conversation_history: list = None):
+    async def stream_llm_response(self, user_message: str, conversation_history: list = None, live2d_model_key: Optional[str] = None):
         """流式调用LLM获取回复"""
         try:
             if not self.llm_client:
@@ -791,7 +738,7 @@ class VoiceProcessor:
             
             messages = []
             
-            messages.append({"role": "system", "content": LIVE2D_SYSTEM_PROMPT})
+            messages.append({"role": "system", "content": _merged_live2d_system_prompt(live2d_model_key)})
             
             if conversation_history:
                 for entry in conversation_history[-10:]:
