@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     MINIMAX_API_BASE: str = "https://api-bj.minimaxi.com"
     # 与官方示例一致时可设 speech-2.8-hd；旧版可用 speech-2.6-turbo
     MINIMAX_TTS_MODEL: str = "speech-2.8-hd"
-    MINIMAX_VOICE_ID: str = "male-qn-qingse"
+    MINIMAX_VOICE_ID: str = "female-tianmei"
     # 留空则请求体中不传该字段（与部分 Postman 用例一致）；可填 Chinese / auto 等
     MINIMAX_LANGUAGE_BOOST: str = ""
     # speech-2.8 等模型支持，如 happy；留空则不传

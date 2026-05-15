@@ -527,7 +527,7 @@ class VoiceProcessor:
         url = f"{base}/v1/t2a_v2"
 
         voice_setting = {
-            "voice_id": getattr(settings, "MINIMAX_VOICE_ID", "male-qn-qingse"),
+            "voice_id": getattr(settings, "MINIMAX_VOICE_ID", "female-tianmei"),
             "speed": 1,
             "vol": 1,
             "pitch": 0,
