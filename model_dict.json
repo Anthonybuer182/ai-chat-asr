@@ -7,7 +7,7 @@
         "priority": 1,
         "motion": [
           "Idle",
-          "Tap_01"
+          "Tap"
         ],
         "expression": [
           "Normal"
@@ -17,9 +17,9 @@
         "description": "开心",
         "priority": 2,
         "motion": [
-          "Speak_02",
-          "Speak_03",
-          "Tap_01"
+          "Speak",
+          "Tap",
+          "Idle"
         ],
         "expression": [
           "Smile",
@@ -30,8 +30,8 @@
         "description": "伤心",
         "priority": 2,
         "motion": [
-          "Shake_01",
-          "FlickDown_01"
+          "Shake",
+          "FlickDown"
         ],
         "expression": [
           "Sad"
@@ -41,8 +41,8 @@
         "description": "生气",
         "priority": 3,
         "motion": [
-          "Shake_02",
-          "FlickDown_02"
+          "Shake",
+          "FlickDown"
         ],
         "expression": [
           "Angry"
@@ -52,8 +52,8 @@
         "description": "惊讶",
         "priority": 3,
         "motion": [
-          "Speak_06",
-          "Tap_04"
+          "Speak",
+          "Tap"
         ],
         "expression": [
           "Surprised"
@@ -63,8 +63,8 @@
         "description": "思考",
         "priority": 2,
         "motion": [
-          "FlickDown_01",
-          "Tap_02"
+          "FlickDown",
+          "Tap"
         ],
         "expression": [
           "Normal"
@@ -74,16 +74,20 @@
         "description": "思考(UI)",
         "priority": 2,
         "motion": [
-          "Tap_03",
-          "FlickDown_01"
+          "Tap",
+          "FlickDown",
+          "Idle"
+        ],
+        "expression": [
+          "Normal"
         ]
       },
       "smile": {
         "description": "微笑",
         "priority": 2,
         "motion": [
-          "Speak_01",
-          "Tap_03"
+          "Speak",
+          "Tap"
         ],
         "expression": [
           "Smile"
@@ -93,8 +97,8 @@
         "description": "脸红",
         "priority": 2,
         "motion": [
-          "Tap_02",
-          "Speak_04"
+          "Tap",
+          "Speak"
         ],
         "expression": [
           "Blushing"
@@ -104,8 +108,8 @@
         "description": "打招呼",
         "priority": 2,
         "motion": [
-          "Speak_01",
-          "Tap_01"
+          "Speak",
+          "Tap"
         ],
         "expression": [
           "Smile"
@@ -115,8 +119,8 @@
         "description": "赞同",
         "priority": 2,
         "motion": [
-          "Tap_03",
-          "Speak_03"
+          "Tap",
+          "Speak"
         ],
         "expression": [
           "Smile"
@@ -126,8 +130,8 @@
         "description": "否定",
         "priority": 2,
         "motion": [
-          "Shake_01",
-          "Shake_02"
+          "Shake",
+          "Tap"
         ],
         "expression": [
           "Sad"
@@ -137,8 +141,8 @@
         "description": "害怕",
         "priority": 3,
         "motion": [
-          "Speak_06",
-          "FlickDown_02"
+          "Speak",
+          "FlickDown"
         ],
         "expression": [
           "Surprised",
@@ -149,9 +153,8 @@
         "description": "兴奋",
         "priority": 3,
         "motion": [
-          "Speak_04",
-          "Speak_05",
-          "Tap_04"
+          "Speak",
+          "Tap"
         ],
         "expression": [
           "Smile",
@@ -162,8 +165,8 @@
         "description": "疑问",
         "priority": 2,
         "motion": [
-          "Speak_06",
-          "FlickDown_01"
+          "Speak",
+          "FlickDown"
         ],
         "expression": [
           "Surprised"
@@ -173,8 +176,8 @@
         "description": "欢呼",
         "priority": 3,
         "motion": [
-          "Speak_03",
-          "Speak_04"
+          "Speak",
+          "Tap"
         ],
         "expression": [
           "Smile",
@@ -185,8 +188,8 @@
         "description": "厌恶",
         "priority": 2,
         "motion": [
-          "Shake_02",
-          "FlickDown_02"
+          "Shake",
+          "FlickDown"
         ],
         "expression": [
           "Angry"
@@ -196,7 +199,7 @@
         "description": "摇头",
         "priority": 2,
         "motion": [
-          "Shake_01"
+          "Shake"
         ],
         "expression": [
           "Sad"
@@ -206,11 +209,15 @@
         "description": "播报",
         "priority": 2,
         "motion": [
-          "Speak_01",
-          "Speak_02",
-          "Speak_03",
-          "Speak_04",
-          "Speak_05"
+          "Idle",
+          "Speak",
+          "Tap",
+          "Shake",
+          "FlickDown"
+        ],
+        "expression": [
+          "Normal",
+          "Smile"
         ]
       },
       "listen": {
@@ -218,16 +225,20 @@
         "priority": 2,
         "motion": [
           "Idle",
-          "Tap_02",
-          "Speak_06"
+          "Tap",
+          "Speak"
+        ],
+        "expression": [
+          "Normal",
+          "Smile"
         ]
       },
       "wakeup": {
         "description": "唤醒",
         "priority": 4,
         "motion": [
-          "Tap_01",
-          "Tap_04"
+          "Tap",
+          "Speak"
         ],
         "expression": [
           "Surprised"

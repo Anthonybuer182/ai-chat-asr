@@ -458,6 +458,13 @@ async def get_live2d_model_config(model_name: str):
         
         models_config = data.get("models", {})
         model_config = models_config.get(model_name)
+        if model_config is None:
+            model_name_lower = model_name.lower()
+            for key, cfg in models_config.items():
+                if key.lower() == model_name_lower:
+                    model_config = cfg
+                    model_name = key
+                    break
         
         if not model_config:
             return {

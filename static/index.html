@@ -1154,12 +1154,25 @@
     <script src="https://cdn.jsdelivr.net/gh/dylanNew/live2d/webgl/Live2D/lib/live2d.min.js"></script>
     <!-- PixiJS 6.5.2 -->
     <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.2/dist/browser/pixi.min.js"></script>
-    <!-- pixi-live2d-display 主库 -->
+    <!-- pixi-live2d-display：index 为共用内核；Cubism 3/4 模型必须再加载 cubism4 运行时 -->
     <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
     <!-- pixi-live2d-display 扩展功能 -->
     <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/extra.min.js"></script>
     <script>
+        /** 设为 true 时在控制台输出 Live2D / WebSocket 调试信息（频繁 log 会造成掉帧） */
+        const LIVE2D_DEBUG = false;
+        window.PIXI = window.PIXI || PIXI;
         const live2d = PIXI.live2d;
+        if (live2d.Live2DModel && typeof live2d.Live2DModel.registerTicker === 'function') {
+            live2d.Live2DModel.registerTicker(PIXI.Ticker);
+        }
+        // 动作交叉淡化：略短一点更跟手，过长会感觉「黏」
+        if (live2d && live2d.config) {
+            const d = live2d.config.motionFadingDuration || 500;
+            live2d.config.motionFadingDuration = Math.min(560, Math.max(380, d));
+            live2d.config.motionSync = true;
+        }
 
         let app;
         
@@ -1170,7 +1183,9 @@
                 view: document.getElementById("canvas"),  // 指定canvas元素
                 autoStart: true,                          // 自动开始渲染循环
                 resizeTo: document.querySelector('.live2d-panel'), // 画布大小随父容器变化
-                backgroundColor: 0xf1f5f9
+                backgroundColor: 0xf1f5f9,
+                antialias: false,
+                powerPreference: 'high-performance'
             });
         })();
         // 全局变量
@@ -1272,13 +1287,13 @@
 
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}/ws`;
-            console.log('尝试连接WebSocket:', wsUrl);
+            if (LIVE2D_DEBUG) console.log('尝试连接WebSocket:', wsUrl);
             websocket = new WebSocket(wsUrl);
 
             websocket.onopen = function() {
             isConnected = true;
             updateConnectionStatus(true);
-            console.log('WebSocket连接成功');
+            if (LIVE2D_DEBUG) console.log('WebSocket连接成功');
             
             // 自动开始录音
             setTimeout(() => {
@@ -1289,17 +1304,16 @@
         };
 
             websocket.onmessage = function(event) {
-                console.log('收到WebSocket消息原始内容:', event.data);
+                if (LIVE2D_DEBUG) console.log('收到WebSocket消息原始内容:', event.data);
                 const data = JSON.parse(event.data);
                 handleServerMessage(data);
             };
 
             websocket.onclose = function() {
-                console.log('WebSocket连接关闭');
+                if (LIVE2D_DEBUG) console.log('WebSocket连接关闭');
                 isConnected = false;
                 updateConnectionStatus(false);
                 updateButtonStates();
-                console.log('WebSocket连接关闭');
             };
 
             websocket.onerror = function(error) {
@@ -1330,16 +1344,16 @@
             
             // 根据消息类型处理
             if (data.type === 'llm_stream_start') {
-                console.log('处理 llm_stream_start 消息');
+                if (LIVE2D_DEBUG) console.log('处理 llm_stream_start 消息');
                 
                 lastParsedEmotion = null;
                 
                 // 用户语音识别结果作为用户消息显示
                 if (data.text) {
-                    console.log('添加用户消息:', data.text);
+                    if (LIVE2D_DEBUG) console.log('添加用户消息:', data.text);
                     addMessage(data.text, 'user');
                 } else {
-                    console.log('没有识别到的文本');
+                    if (LIVE2D_DEBUG) console.log('没有识别到的文本');
                 }
                 
                 // 流式回复开始
@@ -1354,7 +1368,7 @@
                 // 触发Live2D动画
                 triggerLive2DAnimation('think');
             } else if (data.type === 'llm_stream_end') {
-                console.log('收到 llm_stream_end', {
+                if (LIVE2D_DEBUG) console.log('收到 llm_stream_end', {
                     audioQueueLength: audioQueue.length,
                     pendingText: pendingText,
                     displayedText: displayedText,
@@ -1366,7 +1380,7 @@
                 llmStreamEnded = true;
 
                 if (!typingInterval && pendingText.length > 0 && currentStreamingMessage) {
-                    console.log('打字机已停止但还有文本，重新启动');
+                    if (LIVE2D_DEBUG) console.log('打字机已停止但还有文本，重新启动');
                     startTypingEffect();
                 }
 
@@ -1410,7 +1424,7 @@
                 triggerLive2DAnimation('sad');
             } else if (data.type === 'tts_audio') {
                 // TTS音频消息，添加到播放队列
-                console.log('收到TTS音频，准备添加到队列');
+                if (LIVE2D_DEBUG) console.log('收到TTS音频，准备添加到队列');
                 if (data.audio) {
                     addToAudioQueue({
                         audio: data.audio,
@@ -1425,7 +1439,7 @@
         // 添加音频到播放队列
         function addToAudioQueue(audioItem) {
             audioQueue.push(audioItem);
-            console.log(`音频添加到队列，当前队列长度: ${audioQueue.length}`);
+            if (LIVE2D_DEBUG) console.log(`音频添加到队列，当前队列长度: ${audioQueue.length}`);
             
             // 如果没有正在播放，立即开始播放
             if (!isPlayingAudio && audioQueue.length > 0) {
@@ -1447,7 +1461,7 @@
             isPlayingAudio = true;
             const audioItem = audioQueue.shift();
             
-            console.log('开始播放音频队列中的音频', {
+            if (LIVE2D_DEBUG) console.log('开始播放音频队列中的音频', {
                 text: audioItem.text,
                 currentStreamingMessage: !!currentStreamingMessage,
                 pendingText: pendingText,
@@ -1455,7 +1469,8 @@
                 typingInterval: !!typingInterval
             });
             triggerLive2DAnimation('speak');
-            
+            emotionScheduler.keepAlive();
+
             const taggedForTyping = (audioItem.textWithTags != null && String(audioItem.textWithTags).length > 0)
                 ? String(audioItem.textWithTags)
                 : String(audioItem.text || '');
@@ -1466,7 +1481,7 @@
             if (bubblePlain.length || taggedForTyping.length) {
                 currentReplyText += bubblePlain;
                 if (!currentStreamingMessage) {
-                    console.log('创建新的流式消息');
+                    if (LIVE2D_DEBUG) console.log('创建新的流式消息');
                     currentStreamingMessage = createStreamingMessage();
                 }
                 if (currentStreamingMessage) {
@@ -1505,7 +1520,7 @@
                 
                 source.onended = () => {
                     stopLipSync();
-                    console.log('当前音频播放完成，继续播放队列');
+                    if (LIVE2D_DEBUG) console.log('当前音频播放完成，继续播放队列');
                     playNextAudio();
                 };
                 
@@ -1775,16 +1790,32 @@
             currentPriority: MOTION_PRIORITY.IDLE,
             currentEmotion: 'neutral',
             lastTriggerTime: 0,
-            cooldownMs: 1500,       // 同情绪最短切换间隔
+            /** 多段 TTS 连续 trigger(speak) 时，限制「整段重播 motion+表情」的频率，避免每句都打断 motion 造成卡顿 */
+            _lastSpeakHeavyMotionAt: 0,
+            speakHeavyMotionMinMs: 2400,
+
+            cooldownMs: 850,
             idleTimer: null,
-            idleDelayMs: 5000,      // 5s 无新情绪后自动回待机
+            /** 一般情绪结束后回待机（无新 dispatch、仅靠定时器时） */
+            idleDelayMs: 3200,
+            /** 思考态：等 LLM 时略长，避免频繁闪回 idle */
+            thinkIdleDelayMs: 10000,
 
             canTrigger(emotion) {
                 const priority = EMOTION_PRIORITY_MAP[emotion] ?? MOTION_PRIORITY.NORMAL;
                 const now = Date.now();
                 if (priority === MOTION_PRIORITY.FORCE) return true;
+                // 显式回到待机：必须允许覆盖 speak 等 NORMAL 状态，否则会一直被 canTrigger 挡住，只能等很长的 idle 定时器
+                if (emotion === 'neutral') return true;
                 if (priority < this.currentPriority) return false;
-                if (emotion === this.currentEmotion && (now - this.lastTriggerTime) < this.cooldownMs) return false;
+                // 对话流水线会高频重复 speak / listen / think（多段 TTS），不能用同情绪冷却挡掉，否则只有第一段有声画
+                const bypassSameEmotionCooldown =
+                    emotion === 'speak' || emotion === 'listen' || emotion === 'think';
+                if (!bypassSameEmotionCooldown
+                    && emotion === this.currentEmotion
+                    && (now - this.lastTriggerTime) < this.cooldownMs) {
+                    return false;
+                }
                 return true;
             },
 
@@ -1796,10 +1827,29 @@
                 this.currentPriority = priority;
                 this.lastTriggerTime = Date.now();
 
+                if (emotion === 'neutral' && this.idleTimer) {
+                    clearTimeout(this.idleTimer);
+                    this.idleTimer = null;
+                }
+                if (emotion === 'neutral') {
+                    this._lastSpeakHeavyMotionAt = 0;
+                }
+
+                if (emotion === 'speak' && this._lastSpeakHeavyMotionAt
+                    && (Date.now() - this._lastSpeakHeavyMotionAt) < this.speakHeavyMotionMinMs) {
+                    this._scheduleReturnToIdle();
+                    return;
+                }
+                if (emotion === 'speak') {
+                    this._lastSpeakHeavyMotionAt = Date.now();
+                }
+
                 const config = getAnimationForEmotion(emotion);
                 if (config) {
                     if (config.expression?.length) applyExpression(config.expression);
-                    if (config.motion?.length) playMotion(config.motion, emotion);
+                    if (config.motion?.length || runtimeMotionGroupNames.length) {
+                        playMotion(config.motion || [], emotion);
+                    }
                 } else {
                     playFallbackMotion(emotion);
                 }
@@ -1807,20 +1857,36 @@
                 if (emotion !== 'neutral') this._scheduleReturnToIdle();
             },
 
+            /** TTS 播放中反复调用，用于延长「不回待机」时间，避免长语音/多段音频中途被切回 idle */
+            keepAlive() {
+                if (this.currentEmotion === 'neutral') return;
+                this._scheduleReturnToIdle();
+            },
+
             _scheduleReturnToIdle() {
                 if (this.idleTimer) clearTimeout(this.idleTimer);
+                const delay =
+                    this.currentEmotion === 'think'
+                        ? this.thinkIdleDelayMs
+                        : this.idleDelayMs;
                 this.idleTimer = setTimeout(() => {
                     if (this.currentPriority <= MOTION_PRIORITY.NORMAL) this.returnToIdle();
-                }, this.idleDelayMs);
+                }, delay);
             },
 
             returnToIdle() {
+                if (typeof isPlayingAudio !== 'undefined' && isPlayingAudio) {
+                    this.keepAlive();
+                    return;
+                }
                 this.currentEmotion = 'neutral';
                 this.currentPriority = MOTION_PRIORITY.IDLE;
                 this.lastTriggerTime = 0;
                 const config = getAnimationForEmotion('neutral');
                 if (config?.expression?.length) applyExpression(config.expression);
-                if (config?.motion?.length) playMotion(config.motion, 'neutral');
+                if (config?.motion?.length || runtimeMotionGroupNames.length) {
+                    playMotion(config?.motion || [], 'neutral');
+                }
             },
 
             forceIdle() {
@@ -1829,43 +1895,217 @@
             },
         };
 
-        // 随机打乱后依次尝试播放 motion，成功即返回
+        // motion：按标签轮询尝试，避免每次随机打乱带来的「跳戏」感
+        const _motionRoundIndex = Object.create(null);
+        /** 从当前模型的 model3.json 解析出的 Motions 分组键（与 model_dict 里可能不一致） */
+        let runtimeMotionGroupNames = [];
+
+        async function fetchMotionGroupsFromModel3Url(modelUrl) {
+            runtimeMotionGroupNames = [];
+            try {
+                const res = await fetch(modelUrl, { cache: 'no-store' });
+                if (!res.ok) {
+                    console.warn('[Live2D] 无法读取 model3.json:', res.status, modelUrl);
+                    return;
+                }
+                const j = await res.json();
+                let motions = j.FileReferences && j.FileReferences.Motions;
+                if (!motions && j.Motions) {
+                    motions = j.Motions;
+                }
+                if (motions && typeof motions === 'object' && !Array.isArray(motions)) {
+                    runtimeMotionGroupNames = Object.keys(motions);
+                    if (LIVE2D_DEBUG) console.log('[Live2D] model3.json 动作分组:', runtimeMotionGroupNames.join(', '));
+                } else {
+                    console.warn('[Live2D] model3.json 中未找到 Motions 对象（FileReferences.Motions）');
+                }
+            } catch (e) {
+                console.warn('[Live2D] 拉取/解析 model3.json 失败', e);
+            }
+        }
+
+        function harvestMotionGroupsFromInternalModel() {
+            if (runtimeMotionGroupNames.length) return;
+            try {
+                const settings = live2dModel && live2dModel.internalModel && live2dModel.internalModel.settings;
+                if (settings && typeof settings.motionGroups === 'object' && settings.motionGroups) {
+                    const keys = Object.keys(settings.motionGroups);
+                    if (keys.length) {
+                        runtimeMotionGroupNames = keys;
+                        if (LIVE2D_DEBUG) console.log('[Live2D] 从 internalModel.settings 读取动作分组:', keys.join(', '));
+                    }
+                }
+            } catch (e) { /* 忽略 */ }
+        }
+
+        function resolveMotionGroupName(requested) {
+            if (!requested) return requested;
+            if (!runtimeMotionGroupNames.length) return requested;
+            if (runtimeMotionGroupNames.includes(requested)) return requested;
+            const n = String(requested);
+            const stripped = n.replace(/_\d+$/, '');
+            if (runtimeMotionGroupNames.includes(stripped)) return stripped;
+            const nl = n.toLowerCase();
+            let hit = runtimeMotionGroupNames.find((k) => k.toLowerCase() === nl);
+            if (hit) return hit;
+            hit = runtimeMotionGroupNames.find((k) => {
+                const kl = k.toLowerCase();
+                return nl.startsWith(kl) || kl.startsWith(stripped.toLowerCase());
+            });
+            return hit || requested;
+        }
+
+        function orderRuntimeGroupsForEmotion(label) {
+            const keys = runtimeMotionGroupNames;
+            if (!keys.length) return [];
+            const l = String(label || '').toLowerCase();
+            const score = (name) => {
+                if (name === '') return 0;
+                const n = name.toLowerCase();
+                if (l.includes('speak')) {
+                    if (/speak|voice|talk|flick|tap|shake/.test(n)) return 0;
+                    if (/idle/.test(n)) return 4;
+                }
+                if (l.includes('think')) {
+                    if (/tap|flick|think/.test(n)) return 0;
+                    if (/idle/.test(n)) return 5;
+                }
+                if (l.includes('listen')) {
+                    if (/idle|tap|listen/.test(n)) return 1;
+                }
+                if (/idle/.test(n)) return 2;
+                return 3;
+            };
+            return [...keys].sort((a, b) => score(a) - score(b) || a.localeCompare(b));
+        }
+
+        function buildExtendedMotionList(dictList, label) {
+            const base = Array.isArray(dictList)
+                ? dictList.filter((x) => x !== undefined && x !== null)
+                : [];
+            const out = [];
+            const seen = new Set();
+            for (const x of base) {
+                if (!seen.has(x)) {
+                    out.push(x);
+                    seen.add(x);
+                }
+            }
+            for (const x of orderRuntimeGroupsForEmotion(label)) {
+                if (!seen.has(x)) {
+                    out.push(x);
+                    seen.add(x);
+                }
+            }
+            return out;
+        }
+
+        function tryStartMotionGroup(name) {
+            if (!live2dModel) return false;
+            if (name === undefined || name === null) return false;
+
+            const mm = live2dModel.internalModel && live2dModel.internalModel.motionManager;
+
+            /* Cubism 导出里常见「唯一分组名为空字符串」*（Kei、部分 Haru）— 必须带索引播放 */
+            if (name === '') {
+                if (mm && typeof mm.startRandomMotion === 'function') {
+                    try {
+                        mm.startRandomMotion('');
+                        return true;
+                    } catch (e) { /* 继续 */ }
+                }
+                for (let idx = 0; idx < 32; idx++) {
+                    const attempts = [
+                        () => live2dModel.motion('', idx),
+                        () => live2dModel.motion('', idx, 3),
+                    ];
+                    if (mm && typeof mm.startMotion === 'function') {
+                        attempts.push(() => mm.startMotion('', idx, 3));
+                        attempts.push(() => mm.startMotion('', idx));
+                    }
+                    for (let i = 0; i < attempts.length; i++) {
+                        try {
+                            attempts[i]();
+                            return true;
+                        } catch (e) { /* 试下一种 */ }
+                    }
+                }
+                return false;
+            }
+
+            const names = [...new Set([resolveMotionGroupName(name), name].filter((n) => n !== undefined && n !== null))];
+            for (const groupName of names) {
+                const attempts = [
+                    () => live2dModel.motion(groupName),
+                    () => live2dModel.motion(groupName, 0),
+                ];
+                if (mm && typeof mm.startRandomMotion === 'function') {
+                    attempts.push(() => mm.startRandomMotion(groupName));
+                }
+                for (let i = 0; i < attempts.length; i++) {
+                    try {
+                        attempts[i]();
+                        return true;
+                    } catch (e) { /* 试下一种 */ }
+                }
+            }
+            return false;
+        }
+
         function playMotion(motionList, label) {
-            if (!live2dModel || !motionList?.length) return;
-            const candidates = [...motionList];
-            for (let i = candidates.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+            if (!live2dModel) return;
+            const extended = buildExtendedMotionList(motionList, label);
+            if (!extended.length) {
+                console.warn('[Live2D] playMotion 无候选分组（model_dict 无 motion 且未能解析 model3 Motions）:', label);
+                return;
             }
-            for (const motion of candidates) {
-                try { live2dModel.motion(motion); console.log(`[Motion] ${label || ''}: ${motion}`); return; }
-                catch (e) { /* 继续尝试下一个 */ }
+            const key = String(label || '_');
+            let start = _motionRoundIndex[key] || 0;
+            let lastErr = null;
+            for (let k = 0; k < extended.length; k++) {
+                const motion = extended[(start + k) % extended.length];
+                try {
+                    if (tryStartMotionGroup(motion)) {
+                        _motionRoundIndex[key] = (start + 1) % extended.length;
+                        if (LIVE2D_DEBUG) console.log(`[Motion] ${label || ''}: ${motion}`);
+                        return;
+                    }
+                    lastErr = new Error('tryStartMotionGroup returned false');
+                } catch (e) {
+                    lastErr = e;
+                }
             }
+            console.warn('[Live2D] motion 均未播放成功。请在浏览器控制台查看 [Live2D] model3.json 动作分组，并把 model_dict 里 motion 改成与之一致的分组名。', label, motionList, lastErr);
         }
 
         // 内部状态（speak/listen/think/wakeup）的 fallback motion
         function playFallbackMotion(state) {
             if (!live2dModel) return;
             const fallbacks = {
-                speak:  ['Talk', 'Speak', 'Idle', 'default'],
-                listen: ['Listen', 'Idle', 'default'],
-                think:  ['Think', 'Idle', 'default'],
+                speak:  ['Idle', 'Tap', 'Talk', 'Speak', 'TapBody', 'default'],
+                listen: ['Idle', 'Tap', 'Listen', 'default'],
+                think:  ['Tap', 'FlickDown', 'Think', 'Idle', 'default'],
                 wakeup: ['Tap', 'Idle', 'default'],
             };
-            const list = fallbacks[state] || ['Idle', 'default'];
+            const list = buildExtendedMotionList(fallbacks[state] || ['Idle'], state);
             for (const m of list) {
-                try { live2dModel.motion(m); return; } catch (e) { /* 继续 */ }
+                if (tryStartMotionGroup(m)) return;
             }
+            console.warn('[Live2D] fallback motion 均未成功:', state);
         }
 
-        // 随机选一个 expression 应用
+        // expression：同情绪下轮询取用，比纯随机更稳定、少「抽风换脸」
+        const _expressionRoundIndex = Object.create(null);
         function applyExpression(expressionList) {
             if (!live2dModel || !expressionList?.length) return;
-            const expr = expressionList[Math.floor(Math.random() * expressionList.length)];
+            const key = emotionScheduler.currentEmotion || '_';
+            const i0 = _expressionRoundIndex[key] || 0;
+            const expr = expressionList[i0 % expressionList.length];
+            _expressionRoundIndex[key] = (i0 + 1) % expressionList.length;
             try {
                 if (typeof live2dModel.expression === 'function') {
                     live2dModel.expression(expr);
-                    console.log(`[Expression] ${expr}`);
+                    if (LIVE2D_DEBUG) console.log(`[Expression] ${expr}`);
                 }
             } catch (e) { console.warn(`[Expression] ${expr} 不可用`); }
         }
@@ -1878,9 +2118,172 @@
             applyExpression(Array.isArray(expressionNames) ? expressionNames : [expressionNames]);
         }
 
-        let lipSyncAnimationId = null;
         let audioAnalyser = null;
-        
+        let lipSyncSmoothedOpen = 0;
+        /** 音频结束后的嘴型闭合淡出 */
+        let lipSyncClosing = false;
+        let _lastLipKeepAliveAt = 0;
+        /** null = 尚未扫描；[] = 已扫描但需回退到按名设置 */
+        let mouthParameterIndexCache = null;
+        /** 略低于默认更新，确保在 motion/物理之后写嘴型，否则会被每帧覆盖「看起来不动」 */
+        const LIP_SYNC_TICKER_PRIORITY = -50;
+
+        function resetMouthParameterCache() {
+            mouthParameterIndexCache = null;
+        }
+
+        /** Cubism Web 可能把 MOC 包在 coreModel 或 coreModel._model 上 */
+        function getCubismParamAccessor(coreModel) {
+            if (!coreModel) return null;
+            if (typeof coreModel.getParameterCount === 'function') return coreModel;
+            const inner = coreModel._model;
+            if (inner && typeof inner.getParameterCount === 'function') return inner;
+            return null;
+        }
+
+        /** 解析嘴张开参数的下标（Cubism 4），避免 setParameterValueById 与字符串名不匹配 */
+        function collectMouthOpenParameterIndices(coreModel) {
+            const m = getCubismParamAccessor(coreModel);
+            if (!m) return [];
+            const found = [];
+            try {
+                const n = m.getParameterCount();
+                if (typeof n !== 'number') return found;
+                for (let i = 0; i < n; i++) {
+                    const pid = m.getParameterId(i);
+                    let s = '';
+                    if (typeof pid === 'string') s = pid;
+                    else if (pid && typeof pid.getString === 'function') s = pid.getString();
+                    else if (pid && pid.string) s = pid.string;
+                    else s = String(pid);
+                    if (/MOUTH_OPEN|MouthOpen|ParamMouthOpen|param_mouth_open|MouthForm|PARAM_MOUTH_FORM|ParamMouthForm/i.test(s)) {
+                        found.push(i);
+                    }
+                }
+            } catch (e) { /* 忽略 */ }
+            return found;
+        }
+
+        function applyMouthOpenToModel(coreModel, value) {
+            const m = getCubismParamAccessor(coreModel);
+            if (!m) return;
+            const v = Math.max(0, Math.min(1, value));
+            if (mouthParameterIndexCache === null) {
+                mouthParameterIndexCache = collectMouthOpenParameterIndices(coreModel);
+            }
+            try {
+                const idxs = mouthParameterIndexCache;
+                if (idxs && idxs.length && m.setParameterValueByIndex) {
+                    for (const idx of idxs) {
+                        m.setParameterValueByIndex(idx, v);
+                    }
+                    return;
+                }
+                const mouthParamNames = [
+                    'PARAM_MOUTH_OPEN_Y',
+                    'ParamMouthOpenY',
+                    'ParamMouthOpen',
+                    'ParamMouth'
+                ];
+                if (m.setParameterValueById) {
+                    for (const paramName of mouthParamNames) {
+                        try {
+                            m.setParameterValueById(paramName, v);
+                        } catch (_) { /* 尝试下一个 */ }
+                    }
+                }
+            } catch (e) {
+                console.warn('LipSync apply:', e);
+            }
+        }
+
+        let lipSyncTickerFn = null;
+        let lipSyncFreqBuf = null;
+        let lipSyncTimeBuf = null;
+        let lipSyncFreqBinCount = 0;
+        let lipSyncTickCounter = 0;
+
+        function lipSyncPixiTick() {
+            const coreModel = live2dModel && live2dModel.internalModel && live2dModel.internalModel.coreModel;
+
+            if (lipSyncClosing) {
+                lipSyncSmoothedOpen *= 0.88;
+                applyMouthOpenToModel(coreModel, lipSyncSmoothedOpen);
+                if (lipSyncSmoothedOpen < 0.028) {
+                    hardStopLipSyncInfrastructure();
+                }
+                return;
+            }
+
+            if (!audioAnalyser || !lipSyncFreqBuf) return;
+
+            lipSyncTickCounter++;
+            if ((lipSyncTickCounter & 1) !== 0) {
+                applyMouthOpenToModel(coreModel, lipSyncSmoothedOpen);
+                return;
+            }
+
+            audioAnalyser.getByteFrequencyData(lipSyncFreqBuf);
+            audioAnalyser.getByteTimeDomainData(lipSyncTimeBuf);
+
+            const bufferLength = lipSyncFreqBinCount;
+            let vocalSum = 0;
+            const bandMax = Math.min(72, bufferLength);
+            for (let i = 3; i < bandMax; i++) {
+                vocalSum += lipSyncFreqBuf[i];
+            }
+            const vocalAvg = vocalSum / Math.max(1, bandMax - 3) / 255;
+
+            let timeSumSq = 0;
+            for (let i = 0; i < lipSyncTimeBuf.length; i++) {
+                const z = (lipSyncTimeBuf[i] - 128) / 128;
+                timeSumSq += z * z;
+            }
+            const rms = Math.sqrt(timeSumSq / lipSyncTimeBuf.length);
+
+            let target = Math.min(1, vocalAvg * 1.85 + rms * 2.35);
+            if (target < 0.04) target *= 0.45;
+
+            const alphaUp = 0.48;
+            const alphaDn = 0.24;
+            if (target > lipSyncSmoothedOpen) {
+                lipSyncSmoothedOpen += (target - lipSyncSmoothedOpen) * alphaUp;
+            } else {
+                lipSyncSmoothedOpen += (target - lipSyncSmoothedOpen) * alphaDn;
+            }
+
+            applyMouthOpenToModel(coreModel, lipSyncSmoothedOpen);
+
+            const now = performance.now();
+            if (now - _lastLipKeepAliveAt > 1800) {
+                _lastLipKeepAliveAt = now;
+                emotionScheduler.keepAlive();
+            }
+        }
+
+        function hardStopLipSyncInfrastructure() {
+            lipSyncClosing = false;
+            if (lipSyncTickerFn && typeof app !== 'undefined' && app && app.ticker) {
+                try {
+                    app.ticker.remove(lipSyncTickerFn);
+                } catch (e) { /* noop */ }
+            }
+            lipSyncTickerFn = null;
+            lipSyncFreqBuf = null;
+            lipSyncTimeBuf = null;
+            lipSyncFreqBinCount = 0;
+            lipSyncTickCounter = 0;
+            if (audioAnalyser) {
+                try { audioAnalyser.disconnect(); } catch (e) {}
+                audioAnalyser = null;
+            }
+            lipSyncSmoothedOpen = 0;
+            try {
+                const cm = live2dModel && live2dModel.internalModel && live2dModel.internalModel.coreModel;
+                applyMouthOpenToModel(cm, 0);
+            } catch (_) { /* noop */ }
+        }
+
         function parseLive2DTags(text) {
             const emotionTagMatch = text.match(/\[EMOTION:(\w+)\]/i);
             
@@ -1888,7 +2291,7 @@
             
             if (emotionTagMatch) {
                 emotion = emotionTagMatch[1].toLowerCase();
-                console.log(`[DEBUG] parseLive2DTags: 解析到情绪标签: ${emotion}`);
+                if (LIVE2D_DEBUG) console.log(`[DEBUG] parseLive2DTags: 解析到情绪标签: ${emotion}`);
             }
             
             return { emotion };
@@ -1930,72 +2333,50 @@
         
         /** @returns {boolean} 若已接通「source → analyser → destination」，则不要再对 source.connect(destination)，否则会重复出声 */
         function startLipSync(audioSource, audioContext) {
-            console.log('=== startLipSync ===', { hasLive2dModel: !!live2dModel });
-            
+            if (LIVE2D_DEBUG) console.log('=== startLipSync ===', { hasLive2dModel: !!live2dModel, hasAppTicker: !!(app && app.ticker) });
+
             if (!live2dModel) {
-                console.log('没有加载Live2D模型');
+                if (LIVE2D_DEBUG) console.log('没有加载Live2D模型');
                 return false;
             }
-            
-            stopLipSync();
-            
+
+            hardStopLipSyncInfrastructure();
+
+            lipSyncClosing = false;
+            lipSyncSmoothedOpen = 0;
+            _lastLipKeepAliveAt = 0;
+            lipSyncTickCounter = 0;
+
             audioAnalyser = audioContext.createAnalyser();
             audioAnalyser.fftSize = 256;
-            audioAnalyser.smoothingTimeConstant = 0.5;
-            
+            audioAnalyser.smoothingTimeConstant = 0.78;
+
             audioSource.connect(audioAnalyser);
             audioAnalyser.connect(audioContext.destination);
-            
-            const bufferLength = audioAnalyser.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
-            
-            console.log('开始口型同步循环');
-            
-            function updateLipSync() {
-                if (!audioAnalyser) return;
-                
-                audioAnalyser.getByteFrequencyData(dataArray);
-                
-                let sum = 0;
-                for (let i = 0; i < bufferLength; i++) {
-                    sum += dataArray[i];
-                }
-                let avgVolume = sum / bufferLength;
-                
-                let mouthValue = Math.min(1.0, (avgVolume / 128.0) * 2.5);
-                
-                const mouthParamNames = [
-                    'PARAM_MOUTH_OPEN_Y',
-                    'ParamMouthOpenY',
-                    'ParamMouthOpen',
-                    'ParamMouth'
-                ];
-                
-                try {
-                    const coreModel = live2dModel.internalModel.coreModel;
-                    if (coreModel && coreModel.setParameterValueById) {
-                        for (const paramName of mouthParamNames) {
-                            coreModel.setParameterValueById(paramName, mouthValue);
-                        }
-                    }
-                } catch(e) {
-                    console.log('LipSync error:', e);
-                }
-                
-                lipSyncAnimationId = requestAnimationFrame(updateLipSync);
+
+            lipSyncFreqBinCount = audioAnalyser.frequencyBinCount;
+            lipSyncFreqBuf = new Uint8Array(lipSyncFreqBinCount);
+            lipSyncTimeBuf = new Uint8Array(audioAnalyser.fftSize);
+
+            lipSyncTickerFn = lipSyncPixiTick;
+            if (app && app.ticker) {
+                app.ticker.add(lipSyncTickerFn, null, LIP_SYNC_TICKER_PRIORITY);
+            } else {
+                console.warn('[Live2D] 口型：PIXI Application 的 ticker 未就绪，无法驱动嘴型（请刷新后重试）');
+                hardStopLipSyncInfrastructure();
+                return false;
             }
-            
-            updateLipSync();
+
+            if (LIVE2D_DEBUG) console.log('口型同步已挂到 Pixi Ticker (优先级 ' + LIP_SYNC_TICKER_PRIORITY + ')');
             return true;
         }
-        
+
+        /** 播放结束：断开 analyser，由 lipSyncPixiTick 的闭合阶段收嘴 */
         function stopLipSync() {
-            if (lipSyncAnimationId) {
-                cancelAnimationFrame(lipSyncAnimationId);
-                lipSyncAnimationId = null;
-            }
+            if (!lipSyncTickerFn && !audioAnalyser) return;
+            lipSyncClosing = true;
             if (audioAnalyser) {
-                try { audioAnalyser.disconnect(); } catch(e) {}
+                try { audioAnalyser.disconnect(); } catch (e) {}
                 audioAnalyser = null;
             }
         }
@@ -2296,7 +2677,7 @@
                     processor = audioContext.createScriptProcessor(bufferSize, 1, 1);
 
                     processor.onaudioprocess = (e) => {
-                        if (Math.random() < 0.01) { // 只输出1%的日志
+                        if (LIVE2D_DEBUG && Math.random() < 0.02) {
                             console.log('处理音频数据');
                         }
                         let inputData = e.inputBuffer.getChannelData(0);
@@ -2995,6 +3376,10 @@
         // 加载实际的Live2D模型（使用pixi-live2d-display）
         async function loadLive2DModel(currentLive2DModel) {
             try {
+                if (!currentLive2DModel || !currentLive2DModel.filePath) {
+                    console.warn('[Live2D] 未配置模型或缺少 filePath，跳过加载');
+                    return;
+                }
                 // filePath：相对 live2d_models 目录（例如 Epsilon/runtime/Epsilon.model3.json），挂载在 /live2d/models/
                 let relPath = (currentLive2DModel.filePath || '').replace(/\\/g, '/');
                 relPath = relPath.replace(/^\/+/, '');
@@ -3012,7 +3397,17 @@
                     app.stage.removeChild(live2dModel);
                     live2dModel.destroy();
                 }
-                live2dModel = await live2d.Live2DModel.from(modelUrl);
+                resetMouthParameterCache();
+                runtimeMotionGroupNames = [];
+
+                await Promise.all([
+                    fetchMotionGroupsFromModel3Url(modelUrl),
+                    live2d.Live2DModel.from(modelUrl).then((m) => {
+                        live2dModel = m;
+                    }),
+                ]);
+
+                harvestMotionGroupsFromInternalModel();
                 // 将模型添加到舞台
                 app.stage.addChild(live2dModel);
 
@@ -3059,9 +3454,9 @@
                     centerInsideModel();
                 });
                 
-                console.log('Live2D模型加载完成！');
+                if (LIVE2D_DEBUG) console.log('Live2D模型加载完成！');
                 
-                currentModelName = currentLive2DModel.name;
+                currentModelName = (currentLive2DModel.name || '').trim();
                 await loadModelConfig(currentModelName);
             } catch (error) {
                 console.error('Live2D模型加载失败:', error);
@@ -3069,26 +3464,39 @@
         }
         
         async function loadModelConfig(modelName) {
-            // 如果已有缓存的配置，直接使用
-            if (allModelsConfig[modelName]) {
-                currentModelConfig = allModelsConfig[modelName];
-                console.log(`使用缓存的模型 ${modelName} 配置`);
+            let nameKey = (modelName || '').trim();
+            if (!nameKey) {
+                if (currentLive2DModel && currentLive2DModel.name) {
+                    const n = String(currentLive2DModel.name).trim();
+                    if (n) return loadModelConfig(n);
+                }
+                currentModelConfig = null;
                 return;
             }
-            
-            // 否则从 API 加载
+            const keysInDict = Object.keys(allModelsConfig || {});
+            const caseHit = keysInDict.find((k) => k.toLowerCase() === nameKey.toLowerCase());
+            const effectiveKey = caseHit || nameKey;
+
+            if (allModelsConfig[effectiveKey]) {
+                currentModelConfig = allModelsConfig[effectiveKey];
+                currentModelName = effectiveKey;
+                if (LIVE2D_DEBUG) console.log(`使用缓存的模型 ${effectiveKey} 配置`);
+                return;
+            }
+
             try {
                 const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
                 const host = window.location.host;
-                const response = await fetch(`${protocol}//${host}/api/live2d/model-config/${encodeURIComponent(modelName)}`);
+                const response = await fetch(`${protocol}//${host}/api/live2d/model-config/${encodeURIComponent(effectiveKey)}`);
                 const result = await response.json();
-                
+
                 if (result.success) {
                     currentModelConfig = result.config;
-                    allModelsConfig[modelName] = result.config; // 缓存配置
-                    console.log(`模型 ${modelName} 配置加载成功`);
+                    allModelsConfig[effectiveKey] = result.config;
+                    currentModelName = effectiveKey;
+                    if (LIVE2D_DEBUG) console.log(`模型 ${effectiveKey} 配置加载成功`);
                 } else {
-                    console.warn(`模型 ${modelName} 配置加载失败: ${result.message}`);
+                    console.warn(`模型 ${effectiveKey} 配置加载失败: ${result.message}`);
                     currentModelConfig = null;
                 }
             } catch (error) {
@@ -3107,7 +3515,7 @@
                 
                 if (result.success) {
                     allModelsConfig = result.models || {};
-                    console.log('所有模型配置加载成功:', Object.keys(allModelsConfig));
+                    if (LIVE2D_DEBUG) console.log('所有模型配置加载成功:', Object.keys(allModelsConfig));
                 } else {
                     console.warn(`加载所有模型配置失败: ${result.message}`);
                 }
@@ -3118,14 +3526,16 @@
         
         function getAnimationForEmotion(emotion) {
             if (!currentModelConfig) {
-                console.warn(`[WARN] currentModelConfig is null, emotion ${emotion} not found`);
-                console.warn(`[DEBUG] allModelsConfig keys:`, Object.keys(allModelsConfig));
-                console.warn(`[DEBUG] currentModelName:`, currentModelName);
+                if (LIVE2D_DEBUG) {
+                    console.warn(`[WARN] currentModelConfig is null, emotion ${emotion} not found`);
+                    console.warn(`[DEBUG] allModelsConfig keys:`, Object.keys(allModelsConfig));
+                    console.warn(`[DEBUG] currentModelName:`, currentModelName);
+                }
                 return null;
             }
-            
+
             const config = currentModelConfig[emotion] || null;
-            console.log(`[DEBUG] getAnimationForEmotion(${emotion}):`, config);
+            if (LIVE2D_DEBUG) console.log(`[DEBUG] getAnimationForEmotion(${emotion}):`, config);
             return config;
         }
         // 加载Live2D模型列表
@@ -3166,7 +3576,7 @@
 
         // 选择Live2D模型
         function selectLive2DModel(modelName) {
-            console.log("选择了模型名称:", modelName);
+            if (LIVE2D_DEBUG) console.log("选择了模型名称:", modelName);
             const model = live2dModels.find(m => m.name === modelName);
             if (model) {
                 currentLive2DModel = model;
@@ -3334,7 +3744,7 @@
                     }
                     
                     const randomMotion = availableMotions[Math.floor(Math.random() * availableMotions.length)];
-                    console.log('触发动作:', randomMotion);
+                    if (LIVE2D_DEBUG) console.log('触发动作:', randomMotion);
                     model.motion(randomMotion);
                 }
             }
@@ -3348,7 +3758,7 @@
                 
                 if (expressionNames.length > 0) {
                     const randomExpression = expressionNames[Math.floor(Math.random() * expressionNames.length)];
-                    console.log('触发表情:', randomExpression);
+                    if (LIVE2D_DEBUG) console.log('触发表情:', randomExpression);
                     model.expression(randomExpression);
                 }
             }
@@ -3468,23 +3878,27 @@
         }
         // 页面加载完成后的初始化
         window.addEventListener('DOMContentLoaded', async function() {
-            console.log('页面加载完成，开始初始化...');
-            console.log('[DEBUG] 开始加载模型配置...');
+            if (LIVE2D_DEBUG) {
+                console.log('页面加载完成，开始初始化...');
+                console.log('[DEBUG] 开始加载模型配置...');
+            }
             
             // 先加载所有模型的配置
             await loadAllModelsConfig();
-            console.log('[DEBUG] allModelsConfig 加载完成:', Object.keys(allModelsConfig));
+            if (LIVE2D_DEBUG) console.log('[DEBUG] allModelsConfig 加载完成:', Object.keys(allModelsConfig));
             
             // 初始化Live2D模型
-            console.log('[DEBUG] 开始初始化 Live2D 模型...');
+            if (LIVE2D_DEBUG) console.log('[DEBUG] 开始初始化 Live2D 模型...');
             await initLive2DModel();
             
             // 初始化按钮状态
             updateButtonStates();
             
-            console.log('初始化完成');
-            console.log('[DEBUG] currentModelConfig:', currentModelConfig);
-            console.log('[DEBUG] currentModelName:', currentModelName);
+            if (LIVE2D_DEBUG) {
+                console.log('初始化完成');
+                console.log('[DEBUG] currentModelConfig:', currentModelConfig);
+                console.log('[DEBUG] currentModelName:', currentModelName);
+            }
         });
         // 页面加载时自动连接服务器
         window.addEventListener('load', function() {
