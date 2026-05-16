@@ -3495,23 +3495,41 @@
             const modal = document.getElementById('live2dModelModal');
             modal.style.display = 'none';
         }
-        function initLive2DModel(){
-            return fetch('/api/settings/get')
-                .then(res => res.json())
-                .then(async result => {
-                    if (result.success && result.data.CURRENT_LIVE2D_MODEL) {
-                        try {
-                            currentLive2DModel = JSON.parse(result.data.CURRENT_LIVE2D_MODEL);
-                        } catch (e) {
-                            console.warn('解析后端模型数据失败:', e);
+        async function initLive2DModel() {
+            try {
+                const res = await fetch('/api/settings/get');
+                const result = await res.json();
+                currentLive2DModel = null;
+                if (result.success && result.data.CURRENT_LIVE2D_MODEL) {
+                    try {
+                        const parsed = JSON.parse(result.data.CURRENT_LIVE2D_MODEL);
+                        if (parsed && parsed.filePath) {
+                            currentLive2DModel = parsed;
                         }
+                    } catch (e) {
+                        console.warn('解析后端模型数据失败:', e);
                     }
-                    await loadLive2DModel(currentLive2DModel);
-                })
-                .catch(err => {
-                    console.warn('获取后端配置失败:', err);
-                });
-        };
+                }
+                if (!currentLive2DModel || !currentLive2DModel.filePath) {
+                    const lr = await fetch('/api/live2d/models');
+                    const lrj = await lr.json();
+                    if (lrj.success && lrj.models && lrj.models.length > 0) {
+                        currentLive2DModel = lrj.models[0];
+                        live2dModels = lrj.models;
+                        fetch('/api/settings/change', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                CURRENT_LIVE2D_MODEL: JSON.stringify(currentLive2DModel)
+                            })
+                        }).catch((err) => console.error('保存默认 Live2D 模型失败:', err));
+                    }
+                }
+                await loadLive2DModel(currentLive2DModel);
+            } catch (err) {
+                console.warn('获取后端配置失败:', err);
+            }
+        }
         // 加载实际的Live2D模型（使用pixi-live2d-display）
         async function loadLive2DModel(currentLive2DModel) {
             try {
