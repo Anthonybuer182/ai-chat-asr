@@ -2,6 +2,15 @@
   "models": {
     "Epsilon": {
       "path": "Epsilon/runtime/Epsilon.model3.json",
+      "_pipeline": {
+        "idle": "neutral",
+        "llm_waiting": "think",
+        "tts_playing": "speak",
+        "listening": "listen",
+        "wakeup": "wakeup",
+        "error": "sad",
+        "assistant_reply": "speak"
+      },
       "neutral": {
         "description": "中性/待机",
         "priority": 1,
@@ -415,7 +424,16 @@
           "07"
         ]
       },
-      "path": "tororo_hijiki/hijiki/runtime/hijiki.model3.json"
+      "path": "tororo_hijiki/hijiki/runtime/hijiki.model3.json",
+      "_pipeline": {
+        "idle": "neutral",
+        "llm_waiting": "think",
+        "tts_playing": "speak",
+        "listening": "listen",
+        "wakeup": "wakeup",
+        "error": "sad",
+        "assistant_reply": "speak"
+      }
     },
     "tororo_hijiki/tororo": {
       "neutral": {
@@ -587,10 +605,28 @@
           "07"
         ]
       },
-      "path": "tororo_hijiki/tororo/runtime/tororo.model3.json"
+      "path": "tororo_hijiki/tororo/runtime/tororo.model3.json",
+      "_pipeline": {
+        "idle": "neutral",
+        "llm_waiting": "think",
+        "tts_playing": "speak",
+        "listening": "listen",
+        "wakeup": "wakeup",
+        "error": "sad",
+        "assistant_reply": "speak"
+      }
     },
     "hiyori_pro_zh": {
       "path": "hiyori_pro_zh/runtime/hiyori_pro_t11.model3.json",
+      "_pipeline": {
+        "idle": "neutral",
+        "llm_waiting": "think",
+        "tts_playing": "speak",
+        "listening": "listen",
+        "wakeup": "wakeup",
+        "error": "sad",
+        "assistant_reply": "speak"
+      },
       "neutral": {
         "description": "中性/待机",
         "priority": 1,
@@ -759,6 +795,15 @@
     },
     "shizuku": {
       "path": "shizuku/runtime/shizuku.model3.json",
+      "_pipeline": {
+        "idle": "neutral",
+        "llm_waiting": "think",
+        "tts_playing": "speak",
+        "listening": "listen",
+        "wakeup": "wakeup",
+        "error": "sad",
+        "assistant_reply": "speak"
+      },
       "neutral": {
         "description": "中性/待机",
         "priority": 1,
@@ -926,6 +971,15 @@
     },
     "haru_greeter_pro_jp": {
       "path": "haru_greeter_pro_jp/runtime/haru_greeter_t05.model3.json",
+      "_pipeline": {
+        "idle": "neutral",
+        "llm_waiting": "think",
+        "tts_playing": "speak",
+        "listening": "listen",
+        "wakeup": "wakeup",
+        "error": "sad",
+        "assistant_reply": "speak"
+      },
       "neutral": {
         "description": "中性/待机",
         "priority": 1,
@@ -1098,6 +1152,15 @@
     },
     "kei_en/kei_basic_free": {
       "path": "kei_en/kei_basic_free/runtime/kei_basic_free.model3.json",
+      "_pipeline": {
+        "idle": "neutral",
+        "llm_waiting": "think",
+        "tts_playing": "speak",
+        "listening": "listen",
+        "wakeup": "wakeup",
+        "error": "sad",
+        "assistant_reply": "speak"
+      },
       "neutral": {
         "description": "中性/待机",
         "priority": 1,
@@ -1271,6 +1334,15 @@
     },
     "kei_en/kei_vowels_pro": {
       "path": "kei_en/kei_vowels_pro/runtime/kei_vowels_pro.model3.json",
+      "_pipeline": {
+        "idle": "neutral",
+        "llm_waiting": "think",
+        "tts_playing": "speak",
+        "listening": "listen",
+        "wakeup": "wakeup",
+        "error": "sad",
+        "assistant_reply": "speak"
+      },
       "neutral": {
         "description": "中性/待机",
         "priority": 1,
@@ -1444,6 +1516,15 @@
     },
     "kei_zh/kei_basic_free": {
       "path": "kei_zh/kei_basic_free/runtime/kei_basic_free.model3.json",
+      "_pipeline": {
+        "idle": "neutral",
+        "llm_waiting": "think",
+        "tts_playing": "speak",
+        "listening": "listen",
+        "wakeup": "wakeup",
+        "error": "sad",
+        "assistant_reply": "speak"
+      },
       "neutral": {
         "description": "中性/待机",
         "priority": 1,
@@ -1617,6 +1698,15 @@
     },
     "kei_zh/kei_vowels_pro": {
       "path": "kei_zh/kei_vowels_pro/runtime/kei_vowels_pro.model3.json",
+      "_pipeline": {
+        "idle": "neutral",
+        "llm_waiting": "think",
+        "tts_playing": "speak",
+        "listening": "listen",
+        "wakeup": "wakeup",
+        "error": "sad",
+        "assistant_reply": "speak"
+      },
       "neutral": {
         "description": "中性/待机",
         "priority": 1,

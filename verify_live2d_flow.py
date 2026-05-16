@@ -37,6 +37,7 @@ def main() -> None:
     assert "Epsilon" in md["models"], "缺少 Epsilon 配置块（请保留至少一个完整样例模型）"
 
     ks, meta = emotion_keys_and_meta_for_model("Epsilon")
+    assert "_pipeline" not in ks and "path" not in ks
     assert "speak" in ks and "neutral" in ks, f"Epsilon 缺少 speak/neutral: {ks}"
     assert isinstance(meta.get("happy"), str)
 
@@ -45,7 +46,7 @@ def main() -> None:
     assert "[EMOTION:neutral]" in instr and "[EMOTION:speak]" in instr
 
     allow_missing = allowed_emotions_frozenset("__no_such_model__")
-    assert "happy" in allow_missing and len(allow_missing) > 10
+    assert len(allow_missing) == 0
 
     allow_eps = allowed_emotions_frozenset("Epsilon")
     assert len(allow_eps) == len(ks)
@@ -55,6 +56,8 @@ def main() -> None:
     assert "badtag" not in s.lower()
     assert "[EMOTION:happy]" in s
     assert "后缀" in s
+
+    assert "EMOTION" not in sanitize_emotion_tags(mixed, frozenset())
 
     hist = clean_llm_reply_for_history("[EMOTION:happy]仅此一句。", allow_eps)
     assert "EMOTION" not in hist and hist.startswith("仅此")

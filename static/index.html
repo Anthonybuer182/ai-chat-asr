@@ -1340,7 +1340,7 @@
             displayedText = '';
             currentStreamingMessage = null;
             llmStreamEnded = false;
-            triggerLive2DAnimation('neutral');
+            triggerPipelineEmotion('idle');
             return true;
         }
 
@@ -1434,7 +1434,7 @@
                 // 延迟创建流式气泡，避免在还没有文本时生成空消息
                 currentStreamingMessage = null;
                 // 触发Live2D动画
-                triggerLive2DAnimation('think');
+                triggerPipelineEmotion('llm_waiting');
             } else if (data.type === 'llm_stream_end') {
                 if (LIVE2D_DEBUG) console.log('收到 llm_stream_end', {
                     audioQueueLength: audioQueue.length,
@@ -1458,16 +1458,16 @@
                 // AI助手完整回复（非流式）
                 addMessage(data.text, 'assistant', data.timestamp);
                 // 触发Live2D动画
-                triggerLive2DAnimation('speak');
+                triggerPipelineEmotion('assistant_reply');
             } else if (data.type === 'user_speech') {
                 // 用户语音识别结果
                 addMessage(data.text, 'user', data.timestamp);
                 // 触发Live2D动画
-                triggerLive2DAnimation('listen');
+                triggerPipelineEmotion('listening');
             } else if (data.type === 'wakeup_detected') {
                 // 唤醒词检测
                 addMessage('唤醒词检测成功！', 'system', data.timestamp);
-                triggerLive2DAnimation('wakeup');
+                triggerPipelineEmotion('wakeup');
             } else if (data.type === 'error' || data.type === 'llm_error') {
                 // 错误消息
                 if (isStreaming && currentStreamingMessage) {
@@ -1478,7 +1478,7 @@
                     llmStreamEnded = false;
                 }
                 addMessage('错误：' + (data.message || data.text), 'error', data.timestamp);
-                triggerLive2DAnimation('sad');
+                triggerPipelineEmotion('error');
             } else if (data.type === 'llm_unavailable') {
                 // LLM不可用
                 if (isStreaming && currentStreamingMessage) {
@@ -1489,7 +1489,7 @@
                     llmStreamEnded = false;
                 }
                 addMessage(data.message || 'LLM服务暂不可用', 'system', data.timestamp);
-                triggerLive2DAnimation('sad');
+                triggerPipelineEmotion('error');
             } else if (data.type === 'tts_audio') {
                 // TTS音频消息，添加到播放队列
                 if (LIVE2D_DEBUG) console.log('收到TTS音频，准备添加到队列');
@@ -1523,7 +1523,7 @@
                 _lastAppliedTtsOverlaySig = '';
                 const finalized = maybeFinalizeAssistantStream();
                 if (!finalized) {
-                    triggerLive2DAnimation('neutral');
+                    triggerPipelineEmotion('idle');
                 }
                 return;
             }
@@ -1538,7 +1538,7 @@
                 displayedText: displayedText,
                 typingInterval: !!typingInterval
             });
-            triggerLive2DAnimation('speak');
+            triggerPipelineEmotion('tts_playing');
             emotionScheduler.keepAlive();
 
             const taggedForTyping = (audioItem.textWithTags != null && String(audioItem.textWithTags).length > 0)
@@ -1844,9 +1844,77 @@
             wakeup:   MOTION_PRIORITY.FORCE,
         };
 
+        function isReservedLive2dConfigKey(k) {
+            return !k || k === 'path' || (typeof k === 'string' && k.startsWith('_'));
+        }
+
+        function isLive2dEmotionEntryLike(v) {
+            return v && typeof v === 'object' && !Array.isArray(v);
+        }
+
+        function canonicalLive2dEmotionKey(cfg, name) {
+            if (!cfg || !name || !isLive2dEmotionEntryLike(cfg)) return null;
+            if (!isReservedLive2dConfigKey(name) && isLive2dEmotionEntryLike(cfg[name]))
+                return name;
+            const lower = String(name).toLowerCase();
+            for (const kk of Object.keys(cfg)) {
+                if (isReservedLive2dConfigKey(kk)) continue;
+                if (!isLive2dEmotionEntryLike(cfg[kk])) continue;
+                if (kk.toLowerCase() === lower) return kk;
+            }
+            return null;
+        }
+
+        /** 流水线槽位名 -> model_dict._pipeline -> Canonical 情绪键 */
+        function resolvePipelineEmotion(slot) {
+            if (!slot || typeof slot !== 'string') return null;
+            if (!currentModelConfig || typeof currentModelConfig !== 'object') return null;
+            const pl = currentModelConfig._pipeline;
+            let target = slot;
+            if (pl && typeof pl === 'object' && typeof pl[slot] === 'string' && pl[slot].trim())
+                target = pl[slot].trim();
+            return canonicalLive2dEmotionKey(currentModelConfig, target);
+        }
+
+        function emotionPriorityResolved(ek) {
+            if (!ek) return MOTION_PRIORITY.NORMAL;
+            const cfg = currentModelConfig && currentModelConfig[ek];
+            if (cfg && typeof cfg.priority === 'number') {
+                const n = cfg.priority;
+                if (n <= 1) return MOTION_PRIORITY.IDLE;
+                if (n >= 4) return MOTION_PRIORITY.FORCE;
+                if (n >= 3) return MOTION_PRIORITY.HIGH;
+                return MOTION_PRIORITY.NORMAL;
+            }
+            const el = typeof ek === 'string' ? ek.toLowerCase() : '';
+            return EMOTION_PRIORITY_MAP[el] ?? MOTION_PRIORITY.NORMAL;
+        }
+
+        function isResolvedIdleEmotion(ek) {
+            const id = resolvePipelineEmotion('idle');
+            return !!(ek && id && ek === id);
+        }
+
+        function isResolvedTtsPlayingEmotion(ek) {
+            const r = resolvePipelineEmotion('tts_playing');
+            return !!(r && ek === r);
+        }
+
+        function isResolvedLlmWaitingEmotion(ek) {
+            const r = resolvePipelineEmotion('llm_waiting');
+            return !!(r && ek === r);
+        }
+
+        function bypassPipelineCooldownForEmotion(ek) {
+            return ['tts_playing', 'listening', 'llm_waiting'].some((slot) => {
+                const r = resolvePipelineEmotion(slot);
+                return !!(r && r === ek);
+            });
+        }
+
         const emotionScheduler = {
             currentPriority: MOTION_PRIORITY.IDLE,
-            currentEmotion: 'neutral',
+            currentEmotion: null,
             lastTriggerTime: 0,
             /** 多段 TTS 连续 trigger(speak) 时，限制「整段重播 motion+表情」的频率，避免每句都打断 motion 造成卡顿 */
             _lastSpeakHeavyMotionAt: 0,
@@ -1860,15 +1928,14 @@
             thinkIdleDelayMs: 10000,
 
             canTrigger(emotion) {
-                const priority = EMOTION_PRIORITY_MAP[emotion] ?? MOTION_PRIORITY.NORMAL;
+                const priority = emotionPriorityResolved(emotion);
                 const now = Date.now();
                 if (priority === MOTION_PRIORITY.FORCE) return true;
-                // 显式回到待机：必须允许覆盖 speak 等 NORMAL 状态，否则会一直被 canTrigger 挡住，只能等很长的 idle 定时器
-                if (emotion === 'neutral') return true;
+                // 显式回到待机：必须允许覆盖 tts/listen，否则会一直被挡住
+                if (isResolvedIdleEmotion(emotion)) return true;
                 if (priority < this.currentPriority) return false;
-                // 对话流水线会高频重复 speak / listen / think（多段 TTS），不能用同情绪冷却挡掉，否则只有第一段有声画
-                const bypassSameEmotionCooldown =
-                    emotion === 'speak' || emotion === 'listen' || emotion === 'think';
+                // 对话流水线高频重复的同槽位映射情绪，不可用同情绪冷却挡掉
+                const bypassSameEmotionCooldown = bypassPipelineCooldownForEmotion(emotion);
                 if (!bypassSameEmotionCooldown
                     && emotion === this.currentEmotion
                     && (now - this.lastTriggerTime) < this.cooldownMs) {
@@ -1878,22 +1945,23 @@
             },
 
             dispatch(emotion) {
+                if (!emotion) return;
                 if (!this.canTrigger(emotion)) return;
 
-                const priority = EMOTION_PRIORITY_MAP[emotion] ?? MOTION_PRIORITY.NORMAL;
+                const priority = emotionPriorityResolved(emotion);
                 this.currentEmotion = emotion;
                 this.currentPriority = priority;
                 this.lastTriggerTime = Date.now();
 
-                if (emotion === 'neutral' && this.idleTimer) {
+                if (isResolvedIdleEmotion(emotion) && this.idleTimer) {
                     clearTimeout(this.idleTimer);
                     this.idleTimer = null;
                 }
-                if (emotion === 'neutral') {
+                if (isResolvedIdleEmotion(emotion)) {
                     this._lastSpeakHeavyMotionAt = 0;
                 }
 
-                if (emotion === 'speak' && this._lastSpeakHeavyMotionAt
+                if (isResolvedTtsPlayingEmotion(emotion) && this._lastSpeakHeavyMotionAt
                     && (Date.now() - this._lastSpeakHeavyMotionAt) < this.speakHeavyMotionMinMs) {
                     // 已在说话 motion 窗口内：延长待机计时即可，避免重复 clearTimeout 抖动
                     if (typeof isPlayingAudio !== 'undefined' && isPlayingAudio) {
@@ -1903,7 +1971,7 @@
                     }
                     return;
                 }
-                if (emotion === 'speak') {
+                if (isResolvedTtsPlayingEmotion(emotion)) {
                     this._lastSpeakHeavyMotionAt = Date.now();
                 }
 
@@ -1917,19 +1985,19 @@
                     playFallbackMotion(emotion);
                 }
 
-                if (emotion !== 'neutral') this._scheduleReturnToIdle();
+                if (!isResolvedIdleEmotion(emotion)) this._scheduleReturnToIdle();
             },
 
             /** TTS 播放中反复调用，用于延长「不回待机」时间，避免长语音/多段音频中途被切回 idle */
             keepAlive() {
-                if (this.currentEmotion === 'neutral') return;
+                if (isResolvedIdleEmotion(this.currentEmotion)) return;
                 this._scheduleReturnToIdle();
             },
 
             _scheduleReturnToIdle() {
                 if (this.idleTimer) clearTimeout(this.idleTimer);
                 const delay =
-                    this.currentEmotion === 'think'
+                    isResolvedLlmWaitingEmotion(this.currentEmotion)
                         ? this.thinkIdleDelayMs
                         : this.idleDelayMs;
                 this.idleTimer = setTimeout(() => {
@@ -1942,13 +2010,19 @@
                     this.keepAlive();
                     return;
                 }
-                this.currentEmotion = 'neutral';
-                this.currentPriority = MOTION_PRIORITY.IDLE;
+                const idleKey = resolvePipelineEmotion('idle');
+                if (!idleKey) {
+                    this.currentPriority = MOTION_PRIORITY.IDLE;
+                    this.lastTriggerTime = 0;
+                    return;
+                }
+                this.currentEmotion = idleKey;
+                this.currentPriority = emotionPriorityResolved(idleKey);
                 this.lastTriggerTime = 0;
-                const config = getAnimationForEmotion('neutral');
+                const config = getAnimationForEmotion(idleKey);
                 if (config?.expression?.length) applyExpression(config.expression);
                 if (config?.motion?.length || runtimeMotionGroupNames.length) {
-                    playMotion(config?.motion || [], 'neutral');
+                    playMotion(config?.motion || [], idleKey);
                 }
             },
 
@@ -2243,6 +2317,17 @@
         function triggerLive2DAnimation(animationType) {
             emotionScheduler.dispatch(animationType);
         }
+
+        /** UI 流水线槽位（非 LLM 情绪名）；实际情绪由 model_dict._pipeline[slot] → 配置的键解析 */
+        function triggerPipelineEmotion(pipelineSlot) {
+            const ek = resolvePipelineEmotion(pipelineSlot);
+            if (!ek) {
+                if (LIVE2D_DEBUG) console.warn('[Live2D] 流水线槽位未映射到情绪:', pipelineSlot);
+                return;
+            }
+            triggerLive2DAnimation(ek);
+        }
+
         function triggerLive2DExpression(expressionNames) {
             applyExpression(Array.isArray(expressionNames) ? expressionNames : [expressionNames]);
         }
@@ -2544,7 +2629,7 @@
             }
             
             // 重置Live2D状态
-            triggerLive2DAnimation('neutral');
+            triggerPipelineEmotion('idle');
         }
 
         // 删除单条消息
@@ -3701,6 +3786,9 @@
         }
         
         function getAnimationForEmotion(emotion) {
+            if (!emotion || isReservedLive2dConfigKey(String(emotion))) {
+                return null;
+            }
             if (!currentModelConfig) {
                 if (LIVE2D_DEBUG) {
                     console.warn(`[WARN] currentModelConfig is null, emotion ${emotion} not found`);
@@ -3710,7 +3798,12 @@
                 return null;
             }
 
-            const config = currentModelConfig[emotion] || null;
+            let config = currentModelConfig[emotion] || null;
+            if (!config) {
+                const canon = canonicalLive2dEmotionKey(currentModelConfig, emotion);
+                if (canon) config = currentModelConfig[canon];
+            }
+            if (config != null && !isLive2dEmotionEntryLike(config)) config = null;
             if (LIVE2D_DEBUG) console.log(`[DEBUG] getAnimationForEmotion(${emotion}):`, config);
             return config;
         }
