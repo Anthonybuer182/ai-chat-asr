@@ -58,6 +58,14 @@ def init_websocket_routes(app, voice_proc: VoiceProcessor, conn_manager: Connect
             print("WebSocket连接尝试")
             client_id = str(id(websocket))
             await manager.connect(websocket, client_id)
+
+            _kw = (getattr(settings, 'WAKEUP_KEYWORD', '') or '').strip()
+            if _kw:
+                manager.set_wakeup_state(client_id, 'sleep')
+                logger.info(f"客户端 {client_id} 唤醒词已设置({_kw})，初始进入休眠状态")
+            else:
+                manager.set_wakeup_state(client_id, 'always_on')
+                logger.info(f"客户端 {client_id} 未设置唤醒词，始终监听模式")
             
             try:
                 while True:
@@ -405,6 +413,15 @@ async def handle_audio_data(audio_data: bytes, client_id: str, websocket: WebSoc
                 logger.debug(f"客户端 {client_id} 语音段结束，积累 {len(buffered_audio)} 字节")
                 if len(buffered_audio) >= MIN_SPEECH_BYTES:
                     if not user_data.get('is_processing', False):
+                        _timeout = getattr(settings, 'WAKEUP_TIMEOUT', 60)
+                        if manager.check_wakeup_timeout(client_id, _timeout):
+                            manager.set_wakeup_state(client_id, 'sleep')
+                            logger.info(f"客户端 {client_id} 唤醒超时({_timeout}s)，进入休眠")
+                            await websocket.send_json({
+                                'type': 'wakeup_sleep',
+                                'message': f'已{_timeout}秒无对话，进入休眠',
+                                'timestamp': time.time()
+                            })
                         user_data['is_processing'] = True
                         asyncio.create_task(
                             _run_speech_pipeline(buffered_audio, client_id, websocket)
@@ -486,12 +503,59 @@ async def process_speech(audio_data: bytes, client_id: str, websocket: WebSocket
 
         logger.info(f"ASR识别 - 客户端 {client_id}: {recognized_text}")
 
-        conversation_history = manager.user_data[client_id]['conversation_history']
-        conversation_history.append({
-            'type': 'user',
-            'text': recognized_text,
-            'timestamp': time.time()
-        })
+        _wakeup_state = manager.get_wakeup_state(client_id)
+        _wakeup_kw = (getattr(settings, 'WAKEUP_KEYWORD', '') or '').strip()
+        _wakeup_matched = False
+
+        if _wakeup_state == 'sleep' and _wakeup_kw:
+            if voice_processor.check_wakeup_keyword(recognized_text, _wakeup_kw):
+                _wakeup_matched = True
+                manager.set_wakeup_state(client_id, 'awake')
+                await websocket.send_json({
+                    'type': 'wakeup_detected',
+                    'message': f'唤醒词「{_wakeup_kw}」已检测',
+                    'timestamp': time.time()
+                })
+                original_wakeup_text = recognized_text
+                recognized_text = voice_processor.strip_wakeup_keyword(recognized_text, _wakeup_kw)
+                logger.info(f"客户端 {client_id} 唤醒成功，处理文本: {recognized_text}")
+                conversation_history = manager.user_data[client_id]['conversation_history']
+                conversation_history.append({
+                    'type': 'user',
+                    'text': original_wakeup_text,
+                    'timestamp': time.time()
+                })
+                await websocket.send_json({
+                    'type': 'llm_stream_start',
+                    'text': original_wakeup_text,
+                    'role': 'user',
+                    'timestamp': time.time()
+                })
+                if not recognized_text:
+                    _greeting = '你好！我在，有什么可以帮你的？'
+                    conversation_history.append({'type': 'assistant', 'text': _greeting, 'timestamp': time.time()})
+                    live_key = parse_current_live2d_model_key_from_settings(settings)
+                    allowed = allowed_emotions_frozenset(live_key)
+                    await handle_tts_request(_greeting, client_id, websocket, allowed, live_key)
+                    await websocket.send_json({
+                        'type': 'llm_stream_end',
+                        'role': 'assistant',
+                        'timestamp': time.time()
+                    })
+                    return
+            else:
+                logger.debug(f"客户端 {client_id} 休眠中，未检测到唤醒词，忽略: {recognized_text}")
+                return
+        elif _wakeup_state == 'awake':
+            manager.update_wakeup_activity(client_id)
+
+        if not _wakeup_matched:
+            conversation_history = manager.user_data[client_id]['conversation_history']
+            conversation_history.append({
+                'type': 'user',
+                'text': recognized_text,
+                'timestamp': time.time()
+            })
 
         if not (voice_processor and voice_processor.llm_client):
             await websocket.send_json({
@@ -509,12 +573,13 @@ async def process_speech(audio_data: bytes, client_id: str, websocket: WebSocket
             len(allowed),
         )
 
-        await websocket.send_json({
-            'type': 'llm_stream_start',
-            'text': recognized_text,
-            'role': 'user',
-            'timestamp': time.time()
-        })
+        if not _wakeup_matched:
+            await websocket.send_json({
+                'type': 'llm_stream_start',
+                'text': recognized_text,
+                'role': 'user',
+                'timestamp': time.time()
+            })
 
         tts_queue: asyncio.Queue = asyncio.Queue()
         tts_task = asyncio.create_task(

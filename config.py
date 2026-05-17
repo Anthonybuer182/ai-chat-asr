@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     # 唤醒词配置
     WAKEUP_KEYWORD: str = "你好小助手"
     WAKEUP_THRESHOLD: float = 0.8
+    WAKEUP_TIMEOUT: int = 60
 
     # TTS模型配置
     TTS_MODEL: str = "EdgeTTS"

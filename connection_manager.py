@@ -32,7 +32,8 @@ class ConnectionManager:
             'conversation_history': [],
             'last_activity': time.time(),
             'voiceprint': None,
-            'wakeup_detected': False,
+            'wakeup_state': 'always_on',
+            'last_wakeup_time': 0.0,
             'interrupt_enabled': True,
             'vad_sensitivity': 0.3,
             'interrupt_threshold': 0.6,
@@ -104,6 +105,35 @@ class ConnectionManager:
     def get_conversation_state(self, client_id: str) -> str:
         """获取对话状态"""
         return self.user_data.get(client_id, {}).get('conversation_state', 'idle')
+
+    def get_wakeup_state(self, client_id: str) -> str:
+        """获取唤醒状态：always_on / sleep / awake"""
+        return self.user_data.get(client_id, {}).get('wakeup_state', 'always_on')
+
+    def set_wakeup_state(self, client_id: str, state: str):
+        """设置唤醒状态"""
+        if client_id in self.user_data:
+            self.user_data[client_id]['wakeup_state'] = state
+            if state == 'awake':
+                self.user_data[client_id]['last_wakeup_time'] = time.time()
+            logger.info(f"客户端 {client_id} 唤醒状态切换为: {state}")
+
+    def update_wakeup_activity(self, client_id: str):
+        """更新唤醒活跃时间（每次对话完成时调用）"""
+        if client_id in self.user_data:
+            self.user_data[client_id]['last_wakeup_time'] = time.time()
+
+    def check_wakeup_timeout(self, client_id: str, timeout_seconds: int = 60) -> bool:
+        """检查是否唤醒超时，返回 True 表示已超时应进入休眠"""
+        if client_id not in self.user_data:
+            return True
+        state = self.user_data[client_id].get('wakeup_state', 'always_on')
+        if state != 'awake':
+            return False
+        last_time = self.user_data[client_id].get('last_wakeup_time', 0.0)
+        if last_time == 0.0:
+            return False
+        return (time.time() - last_time) > timeout_seconds
 
     async def shutdown(self):
         """优雅关闭所有连接和任务"""

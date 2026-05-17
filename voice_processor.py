@@ -797,6 +797,58 @@ class VoiceProcessor:
             logger.info("关键词唤醒功能将使用备用方案")
             return True
 
+    def _normalize_for_match(self, text: str, has_cjk: bool) -> str:
+        import re
+        _cn_punct = re.compile(r"[，。！？…、：；（）《》【】]")
+        _en_punct = re.compile(r"[\.\!\?\:;,\(\)\[\]\{\}]")
+        s = _cn_punct.sub('', text)
+        s = _en_punct.sub('', s)
+        if has_cjk:
+            s = re.sub(r'\s+', '', s)
+        return s
+
+    def _map_clean_idx_to_original(self, original: str, has_cjk: bool, clean_end: int) -> int:
+        import re
+        _cn_punct = re.compile(r"[，。！？…、：；（）《》【】]")
+        _en_punct = re.compile(r"[\.\!\?\:;,\(\)\[\]\{\}]")
+        clean_pos = 0
+        for i, ch in enumerate(original):
+            if _cn_punct.match(ch) or _en_punct.match(ch):
+                continue
+            if has_cjk and ch in ' \t\r\n':
+                continue
+            if clean_pos >= clean_end:
+                return i
+            clean_pos += 1
+        return len(original)
+
+    def check_wakeup_keyword(self, text: str, keyword: str) -> bool:
+        """检查文本中是否包含唤醒关键词（去标点后比较，英文保留空格，中文去空格）"""
+        if not keyword or not keyword.strip():
+            return False
+        if not text:
+            return False
+        import re
+        has_cjk = bool(re.search(r'[\u4e00-\u9fff]', keyword))
+        kw_clean = self._normalize_for_match(keyword, has_cjk)
+        text_clean = self._normalize_for_match(text, has_cjk)
+        logger.debug(f"唤醒词匹配: kw='{kw_clean}' in text='{text_clean}'")
+        return kw_clean in text_clean
+
+    def strip_wakeup_keyword(self, text: str, keyword: str) -> str:
+        """从文本中去除唤醒关键词，返回剩余原始内容（保留标点格式）"""
+        if not keyword or not keyword.strip():
+            return text
+        import re
+        has_cjk = bool(re.search(r'[\u4e00-\u9fff]', keyword))
+        kw_clean = self._normalize_for_match(keyword, has_cjk)
+        text_clean = self._normalize_for_match(text, has_cjk)
+        idx = text_clean.find(kw_clean)
+        if idx >= 0:
+            orig_pos = self._map_clean_idx_to_original(text, has_cjk, idx + len(kw_clean))
+            return text[orig_pos:].strip()
+        return text
+
     async def extract_voiceprint_feature(self, audio_data: bytes) -> Any:
         """提取声纹特征"""
         try:

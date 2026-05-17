@@ -607,6 +607,7 @@ async def get_settings():
                 "TTS_MODEL": app_settings.TTS_MODEL,
                 "WAKEUP_KEYWORD": app_settings.WAKEUP_KEYWORD,
                 "WAKEUP_THRESHOLD": app_settings.WAKEUP_THRESHOLD,
+                "WAKEUP_TIMEOUT": app_settings.WAKEUP_TIMEOUT,
                 "MODEL_NAME": app_settings.MODEL_NAME,
                 "CURRENT_LIVE2D_MODEL": app_settings.CURRENT_LIVE2D_MODEL
             },
@@ -624,7 +625,7 @@ async def get_settings():
 async def change_settings(settings_dict: Dict[str, Any] = Body(...)):
     """修改系统设置"""
     try:
-        valid_keys = ["TTS_MODEL", "WAKEUP_KEYWORD", "WAKEUP_THRESHOLD", "MODEL_NAME", "CURRENT_LIVE2D_MODEL"]
+        valid_keys = ["TTS_MODEL", "WAKEUP_KEYWORD", "WAKEUP_THRESHOLD", "WAKEUP_TIMEOUT", "MODEL_NAME", "CURRENT_LIVE2D_MODEL"]
         valid_tts_models = ["ChatTTS", "EdgeTTS", "MiniMax"]
         
         update_data = {}
@@ -656,6 +657,7 @@ async def change_settings(settings_dict: Dict[str, Any] = Body(...)):
                 "TTS_MODEL": app_settings.TTS_MODEL,
                 "WAKEUP_KEYWORD": app_settings.WAKEUP_KEYWORD,
                 "WAKEUP_THRESHOLD": app_settings.WAKEUP_THRESHOLD,
+                "WAKEUP_TIMEOUT": app_settings.WAKEUP_TIMEOUT,
                 "MODEL_NAME": app_settings.MODEL_NAME,
                 "CURRENT_LIVE2D_MODEL": app_settings.CURRENT_LIVE2D_MODEL
             },
