@@ -9,8 +9,6 @@ from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 
 from config import settings
-import ChatTTS
-import edge_tts
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +41,6 @@ class VoiceProcessor:
         self.vad_model = None
         self.vad_utils = None
         self.vad_iterator = None
-        self.tts_model = None
         self.edge_tts_voice = "zh-CN-XiaoxiaoNeural"
         self.voiceprint_model = None
         self.llm_client = None
@@ -427,32 +424,8 @@ class VoiceProcessor:
 
     async def _init_tts_model(self):
         """初始化TTS模型"""
-        try:
-            self.tts_model = ChatTTS.Chat()
-            self.tts_model.load()
-            
-            try:
-                import json
-                import os
-                speaker_file = os.path.join(os.path.dirname(__file__), 'female_speaker.json')
-                if os.path.exists(speaker_file):
-                    with open(speaker_file, 'r', encoding='utf-8') as f:
-                        speaker_data = json.load(f)
-                        self.rand_spk = speaker_data.get('speaker')
-                        logger.info("已加载固定女声音色")
-                else:
-                    self.rand_spk = self.tts_model.sample_random_speaker()
-                    logger.info("未找到音色文件，使用随机音色")
-            except Exception as e:
-                logger.warning(f"加载音色文件失败: {e}")
-                self.rand_spk = self.tts_model.sample_random_speaker()
-            
-            logger.info("TTS模型从本地加载成功，已固定音色")          
-            return True
-        except Exception as e:
-            logger.error(f"TTS模型初始化失败: {e}")
-            logger.info("使用备用TTS方案")
-            return True
+        logger.info("TTS使用云端方案（EdgeTTS / MiniMax），无需本地模型")
+        return True
 
     async def generate_minimax_tts(self, text: str) -> Optional[bytes]:
         """调用 MiniMax T2A HTTP API；响应 data.audio 为 hex，解码为 mp3/wav 等原始字节。"""

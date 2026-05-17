@@ -20,7 +20,7 @@
 - **语音识别**: fun-asr
 - **声纹匹配**: Pipeline
 - **语音检测**: silerovad
-- **TTS**: ChatTTS
+- **TTS**: EdgeTTS / MiniMax
 
 ## 安装依赖
 

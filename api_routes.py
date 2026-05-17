@@ -586,7 +586,7 @@ async def get_system_status():
             "models": {
                 "asr_initialized": voice_processor.asr_model is not None if voice_processor else False,
                 "vad_initialized": voice_processor.vad_iterator is not None if voice_processor else False,
-                "tts_initialized": voice_processor.tts_model is not None if voice_processor else False,
+                "tts_initialized": True if voice_processor else False,
                 "voiceprint_initialized": voice_processor.voiceprint_model is not None if voice_processor else False
             },
             "storage": {
@@ -641,7 +641,7 @@ async def change_settings(settings_dict: Dict[str, Any] = Body(...)):
     """修改系统设置"""
     try:
         valid_keys = ["TTS_MODEL", "WAKEUP_KEYWORD", "WAKEUP_THRESHOLD", "WAKEUP_TIMEOUT", "MODEL_NAME", "CURRENT_LIVE2D_MODEL"]
-        valid_tts_models = ["ChatTTS", "EdgeTTS", "MiniMax"]
+        valid_tts_models = ["EdgeTTS", "MiniMax"]
         
         update_data = {}
         errors = []

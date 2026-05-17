@@ -1163,10 +1163,6 @@
             </div>
             <div class="modal-body">
                 <div class="tts-options">
-                    <div class="tts-option" data-value="ChatTTS" onclick="selectTTS('ChatTTS')">
-                        <i class="fas fa-robot"></i>
-                        <span>ChatTTS</span>
-                    </div>
                     <div class="tts-option" data-value="EdgeTTS" onclick="selectTTS('EdgeTTS')">
                         <i class="fas fa-microphone-alt"></i>
                         <span>EdgeTTS</span>
@@ -2746,7 +2742,7 @@
                 .then(response => response.json())
                 .then(result => {
                     if (result.success) {
-                        const currentTTS = result.data.TTS_MODEL || 'ChatTTS';
+                        const currentTTS = result.data.TTS_MODEL || 'EdgeTTS';
                         document.querySelectorAll('.tts-option').forEach(option => {
                             if (option.dataset.value === currentTTS) {
                                 option.classList.add('selected');

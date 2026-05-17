@@ -8,7 +8,6 @@ from typing import Dict, Any, Optional, Union
 import numpy as np
 from fastapi import WebSocket, WebSocketDisconnect
 import base64
-import ChatTTS
 from voice_processor import VoiceProcessor
 from connection_manager import ConnectionManager
 from config import settings
@@ -237,7 +236,7 @@ async def handle_tts_request(
         if not tts_plain:
             return
 
-        tts_model = getattr(settings, 'TTS_MODEL', 'ChatTTS')
+        tts_model = getattr(settings, 'TTS_MODEL', 'EdgeTTS')
 
         if tts_model == 'EdgeTTS':
             await handle_edge_tts_request(tts_plain, websocket, cleaned_tags)
@@ -246,8 +245,6 @@ async def handle_tts_request(
                 tts_plain, cleaned_tags, live2d_model_key, settings
             )
             await handle_minimax_tts_request(tts_minimax, websocket, cleaned_tags)
-        else:
-            await handle_chat_tts_request(tts_plain, websocket, cleaned_tags)
 
     except Exception as e:
         logger.error(f"处理TTS请求错误: {e}")
@@ -256,61 +253,6 @@ async def handle_tts_request(
             'type': 'tts_error',
             'text': plain,
             'message': f'TTS处理错误: {str(e)}',
-            'timestamp': time.time()
-        })
-
-async def handle_chat_tts_request(sentence_plain: str, websocket: WebSocket, text_with_tags: str):
-    """处理 ChatTTS 请求"""
-    try:
-        if not voice_processor or not voice_processor.tts_model:
-            await websocket.send_json({
-                'type': 'tts_error',
-                'message': 'ChatTTS模型未初始化',
-                'timestamp': time.time()
-            })
-            return
-        
-        texts = [sentence_plain]
-        
-        params_infer_code = ChatTTS.Chat.InferCodeParams(
-            spk_emb=voice_processor.rand_spk,
-            temperature=0.3
-        )
-        
-        wavs = voice_processor.tts_model.infer(
-            texts, 
-            params_infer_code=params_infer_code,
-            use_decoder=True
-        )
-        
-        if wavs and len(wavs) > 0:
-            audio_data = wavs[0]
-            
-            import numpy as np
-            audio_bytes = (audio_data * 32767).astype(np.int16).tobytes()
-            wav_data = create_wav_header(audio_bytes, sample_rate=24000)
-            audio_base64 = base64.b64encode(wav_data).decode('utf-8')
-            
-            await websocket.send_json({
-                'type': 'tts_audio',
-                'audio': audio_base64,
-                'text': sentence_plain,
-                'textWithTags': text_with_tags,
-                'message': 'ChatTTS音频生成成功',
-                'timestamp': time.time()
-            })
-        else:
-            await websocket.send_json({
-                'type': 'tts_error',
-                'message': 'ChatTTS音频生成失败'
-            })
-    
-    except Exception as e:
-        logger.error(f"ChatTTS处理错误: {e}")
-        await websocket.send_json({
-            'type': 'tts_error',
-            'text': sentence_plain,
-            'message': f'ChatTTS处理错误: {str(e)}',
             'timestamp': time.time()
         })
 
@@ -669,13 +611,13 @@ async def process_speech(audio_data: bytes, client_id: str, websocket: WebSocket
 
         llm_response = ""
         sentence_buffer = ""
-        _tts_choice = getattr(settings, 'TTS_MODEL', 'ChatTTS')
+        _tts_choice = getattr(settings, 'TTS_MODEL', 'EdgeTTS')
         if _tts_choice == 'EdgeTTS':
             tts_enabled = True
         elif _tts_choice == 'MiniMax':
             tts_enabled = bool(getattr(settings, 'MINIMAX_API_KEY', '').strip())
         else:
-            tts_enabled = bool(voice_processor and voice_processor.tts_model)
+            tts_enabled = True
 
         llm_stream_ok = False
         try:
