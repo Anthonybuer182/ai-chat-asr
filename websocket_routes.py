@@ -599,12 +599,37 @@ async def process_speech(audio_data: bytes, client_id: str, websocket: WebSocket
                 'timestamp': time.time()
             })
 
-        if manager.has_voiceprint(client_id) and voice_processor and voice_processor.voiceprint_model:
+        if manager.has_voiceprint(client_id):
+            if not voice_processor or not voice_processor.voiceprint_model:
+                logger.error(f"客户端 {client_id} 声纹验证已开启但模型未就绪，拒绝处理")
+                await websocket.send_json({
+                    'type': 'voiceprint_rejected',
+                    'message': '声纹模型未就绪，请检查 modelscope/campplus 是否安装',
+                    'timestamp': time.time()
+                })
+                return
+
             audio_duration = len(audio_data) / 2 / 16000.0
-            if audio_duration >= 0.8:
-                stored_embedding = manager.get_voiceprint_embedding()
+            stored_embedding = manager.get_voiceprint_embedding()
+            if stored_embedding is None:
+                logger.warning(f"客户端 {client_id} 声纹嵌入未提取（ffmpeg缺失？），拒绝处理")
+                await websocket.send_json({
+                    'type': 'voiceprint_rejected',
+                    'message': '声纹嵌入未就绪，请重新录制并确保 ffmpeg 已安装',
+                    'timestamp': time.time()
+                })
+                return
+            if audio_duration >= 1.0:
                 current_embedding = await voice_processor.extract_voiceprint_feature(audio_data)
-                if current_embedding is not None and not voice_processor.match_voiceprint(current_embedding, stored_embedding):
+                if current_embedding is None:
+                    logger.warning(f"客户端 {client_id} 声纹提取失败（音频过短或模型异常），拒绝处理")
+                    await websocket.send_json({
+                        'type': 'voiceprint_rejected',
+                        'message': '声纹提取失败，请重试',
+                        'timestamp': time.time()
+                    })
+                    return
+                if not voice_processor.match_voiceprint(current_embedding, stored_embedding):
                     logger.warning(f"客户端 {client_id} 声纹不匹配，拒绝处理")
                     await websocket.send_json({
                         'type': 'voiceprint_rejected',

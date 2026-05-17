@@ -855,88 +855,115 @@ class VoiceProcessor:
             if not self.voiceprint_model:
                 return None
 
-            import tempfile
-            import wave
-
             audio_array = np.frombuffer(audio_data, dtype=np.int16)
             if len(audio_array) < 16000:
                 return None
 
             audio_float = audio_array.astype(np.float32) / 32768.0
 
-            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp:
-                tmp_path = tmp.name
-                with wave.open(tmp_path, 'wb') as wf:
-                    wf.setnchannels(1)
-                    wf.setsampwidth(2)
-                    wf.setframerate(16000)
-                    wf.writeframes(audio_data)
-
-            try:
-                result = self.voiceprint_model(tmp_path)
-                if result and 'spk_embedding' in result:
-                    embedding = np.array(result['spk_embedding'], dtype=np.float32)
-                    logger.info(f"声纹嵌入提取成功，维度: {embedding.shape}")
-                    return embedding
-                else:
-                    logger.warning(f"声纹提取返回格式异常: {list(result.keys()) if result else None}")
-                    return None
-            finally:
-                try:
-                    os.unlink(tmp_path)
-                except:
-                    pass
+            result = self.voiceprint_model([audio_float], output_emb=True)
+            embedding = self._parse_voiceprint_result(result)
+            if embedding is not None:
+                return embedding
+            logger.warning(f"声纹提取返回格式异常: {list(result.keys()) if isinstance(result, dict) else type(result)}")
+            return None
 
         except Exception as e:
             logger.warning(f"声纹特征提取失败: {e}")
             return None
 
     async def extract_voiceprint_from_file(self, filepath: str) -> Any:
-        """从音频文件提取声纹嵌入"""
+        """从音频文件提取声纹嵌入（audio → numpy → pipeline，绕过 modelscope File.read）"""
         try:
             if not self.voiceprint_model:
+                logger.error("声纹模型未初始化，无法提取")
                 return None
 
             import subprocess
-            import tempfile
+            import soundfile as sf
 
             wav_path = filepath
-            if filepath.endswith('.webm'):
-                tmp_wav = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
-                tmp_wav.close()
-                try:
-                    subprocess.run([
-                        'ffmpeg', '-y', '-i', filepath,
-                        '-ar', '16000', '-ac', '1', '-sample_fmt', 's16',
-                        tmp_wav.name
-                    ], capture_output=True, timeout=30, check=True)
-                    wav_path = tmp_wav.name
-                except Exception as e:
-                    logger.error(f"webm→wav 转换失败: {e}")
-                    try:
-                        os.unlink(tmp_wav.name)
-                    except:
-                        pass
+
+            if filepath.endswith(('.webm', '.ogg', '.mp3')):
+                ffmpeg_exe = self._find_ffmpeg()
+                if ffmpeg_exe is None:
+                    logger.error("未找到 ffmpeg，无法将 webm 转为 wav。请 pip install imageio-ffmpeg")
                     return None
 
-            try:
-                result = self.voiceprint_model(wav_path)
-                if result and 'spk_embedding' in result:
-                    embedding = np.array(result['spk_embedding'], dtype=np.float32)
-                    logger.info(f"声纹嵌入提取成功，维度: {embedding.shape}")
-                    return embedding
-                else:
+                import pathlib
+                _out_dir = pathlib.Path(filepath).parent
+                _out_wav = _out_dir / "_current_voiceprint.wav"
+                wav_path = str(_out_wav)
+
+                logger.info(f"使用 ffmpeg: {ffmpeg_exe}, 输入: {filepath} ({os.path.getsize(filepath)} bytes)")
+                try:
+                    proc = subprocess.run([
+                        ffmpeg_exe, '-y', '-i', filepath,
+                        '-ar', '16000', '-ac', '1', '-sample_fmt', 's16',
+                        wav_path
+                    ], capture_output=True, timeout=30)
+                    if proc.returncode != 0:
+                        stderr = proc.stderr.decode('utf-8', errors='replace')[-500:]
+                        logger.error(f"ffmpeg 返回码={proc.returncode} stderr: {stderr}")
+                        return None
+                    logger.info(f"ffmpeg 转换成功，输出: {wav_path} ({os.path.getsize(wav_path)} bytes)")
+                except Exception as e:
+                    logger.error(f"ffmpeg 转换异常: {e}")
                     return None
-            finally:
-                if wav_path != filepath:
-                    try:
-                        os.unlink(wav_path)
-                    except:
-                        pass
+
+            audio_float, sr = sf.read(wav_path, dtype='float32')
+            if len(audio_float.shape) == 2:
+                audio_float = audio_float[:, 0]
+            if sr != 16000:
+                import librosa
+                audio_float = librosa.resample(audio_float, orig_sr=sr, target_sr=16000)
+            logger.info(f"音频已加载: {len(audio_float)} 采样点, sr={sr}")
+
+            result = self.voiceprint_model([audio_float], output_emb=True)
+            embedding = self._parse_voiceprint_result(result)
+            if embedding is not None:
+                logger.info(f"声纹嵌入提取成功，维度: {embedding.shape}")
+                return embedding
+            else:
+                logger.warning(f"声纹模型返回异常: {list(result.keys()) if isinstance(result, dict) else type(result)}")
+                return None
 
         except Exception as e:
-            logger.warning(f"从文件提取声纹失败: {e}")
+            logger.warning(f"从文件提取声纹失败: {e}", exc_info=True)
             return None
+
+    def _parse_voiceprint_result(self, result) -> Optional[np.ndarray]:
+        """兼容多种 campplus pipeline 输出格式，提取 spk_embedding"""
+        if result is None:
+            return None
+        if isinstance(result, np.ndarray):
+            return result.astype(np.float32)
+        if isinstance(result, dict):
+            for key in ('embs', 'spk_embedding', 'spk_embeddings', 'embedding', 'embeddings'):
+                if key in result and result[key] is not None:
+                    return np.array(result[key], dtype=np.float32).flatten()
+            if 'output' in result and isinstance(result['output'], dict):
+                return self._parse_voiceprint_result(result['output'])
+            if 'best_result' in result:
+                return self._parse_voiceprint_result(result['best_result'])
+        return None
+
+    def _find_ffmpeg(self) -> Optional[str]:
+        """查找 ffmpeg 可执行文件路径（优先 imageio-ffmpeg，其次系统 PATH）"""
+        try:
+            import imageio_ffmpeg
+            exe = imageio_ffmpeg.get_ffmpeg_exe()
+            if exe:
+                return exe
+        except Exception:
+            pass
+        try:
+            import subprocess
+            subprocess.run(['ffmpeg', '-version'], capture_output=True, timeout=5, check=True)
+            return 'ffmpeg'
+        except Exception:
+            pass
+        return None
 
     def match_voiceprint(self, embedding_a, embedding_b, threshold: float = None) -> bool:
         """余弦相似度比对两个声纹嵌入"""

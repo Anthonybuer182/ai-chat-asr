@@ -74,23 +74,34 @@ async def upload_voiceprint(voiceprint: UploadFile = File(...), client_id: str =
         logger.info(f"声纹文件已保存: {filepath}, 大小: {len(contents)} 字节")
 
         embedding = None
-        if voice_processor and voice_processor.voiceprint_model:
+        diag = ""
+        model_available = voice_processor and voice_processor.voiceprint_model is not None
+        if model_available:
             try:
                 embedding = await voice_processor.extract_voiceprint_from_file(filepath)
                 if embedding is not None:
                     manager.set_voiceprint_embedding(client_id, embedding)
                     logger.info(f"声纹嵌入已提取并保存，客户端: {client_id}, 维度: {embedding.shape}")
                 else:
-                    logger.warning(f"声纹嵌入提取失败，客户端: {client_id}")
+                    has_ffmpeg = voice_processor._find_ffmpeg() is not None
+                    diag = "ffmpeg转换或模型提取失败，查看服务端日志"
+                    if not has_ffmpeg:
+                        diag = "未找到 ffmpeg，请 pip install imageio-ffmpeg"
+                    logger.warning(f"声纹嵌入提取失败: {diag}")
             except Exception as e:
+                diag = str(e)
                 logger.warning(f"声纹特征提取失败: {e}")
+
+        manager.mark_voiceprint_uploaded()
 
         return {
             "success": True,
-            "message": "声纹上传成功" if embedding is not None else "声纹上传成功但嵌入提取失败",
+            "message": "声纹上传成功" if embedding is not None else "声纹上传成功但嵌入提取失败——" + diag,
             "filename": filename,
             "size": len(contents),
-            "embeddingExtracted": embedding is not None
+            "embeddingExtracted": embedding is not None,
+            "modelAvailable": model_available,
+            "diagnostic": diag
         }
         
     except Exception as e:

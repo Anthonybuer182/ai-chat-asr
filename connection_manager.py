@@ -17,6 +17,7 @@ class ConnectionManager:
         self.current_tts_tasks: Dict[str, asyncio.Task] = {}
         self._shutting_down = False
         self.global_voiceprint_embedding = None
+        self._voiceprint_uploaded = False
 
     async def connect(self, websocket: WebSocket, client_id: str):
         """建立WebSocket连接"""
@@ -137,12 +138,18 @@ class ConnectionManager:
         return (time.time() - last_time) > timeout_seconds
 
     def has_voiceprint(self, client_id: str = None) -> bool:
-        """检查是否已录制声纹"""
-        return self.global_voiceprint_embedding is not None
+        """检查是否已要求声纹验证（上传过声纹文件即为 True，不依赖模型）"""
+        return self._voiceprint_uploaded
+
+    def mark_voiceprint_uploaded(self):
+        """标记声纹已上传，后续所有对话都需要声纹验证"""
+        self._voiceprint_uploaded = True
+        logger.info("声纹验证已启用——所有对话将进行声纹比对")
 
     def set_voiceprint_embedding(self, client_id: str, embedding):
         """设置声纹嵌入（全局）"""
         self.global_voiceprint_embedding = embedding
+        self._voiceprint_uploaded = True
         logger.info(f"全局声纹嵌入已更新，维度: {getattr(embedding, 'shape', '?')}")
 
     def get_voiceprint_embedding(self):
@@ -150,9 +157,10 @@ class ConnectionManager:
         return self.global_voiceprint_embedding
 
     def clear_voiceprint(self, client_id: str = None):
-        """清除声纹嵌入（全局）"""
+        """清除声纹（全局）"""
         self.global_voiceprint_embedding = None
-        logger.info("全局声纹嵌入已清除")
+        self._voiceprint_uploaded = False
+        logger.info("全局声纹已清除")
 
     async def shutdown(self):
         """优雅关闭所有连接和任务"""

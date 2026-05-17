@@ -3484,8 +3484,14 @@
             })
             .then(data => {
                 if (data.success) {
-                    // 重新加载声纹文件列表
                     loadVoiceprintFiles();
+                    if (data.embeddingExtracted) {
+                        alert('声纹录制成功！系统将仅允许你的声音进行对话。');
+                    } else if (!data.modelAvailable) {
+                        alert('声纹模型未就绪。请安装 modelscope: pip install modelscope');
+                    } else {
+                        alert('声纹嵌入提取失败: ' + (data.diagnostic || data.message));
+                    }
                 } else {
                     throw new Error(data.message || '服务器返回失败');
                 }
