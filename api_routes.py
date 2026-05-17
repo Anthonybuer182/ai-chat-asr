@@ -72,25 +72,25 @@ async def upload_voiceprint(voiceprint: UploadFile = File(...), client_id: str =
             f.write(contents)
         
         logger.info(f"声纹文件已保存: {filepath}, 大小: {len(contents)} 字节")
-        
-        # 提取声纹特征（如果声纹模型可用）
+
+        embedding = None
         if voice_processor and voice_processor.voiceprint_model:
             try:
-                voiceprint_feature = await voice_processor.extract_voiceprint_feature(contents)
-                
-                if voiceprint_feature:
-                    # 保存声纹特征到用户数据
-                    manager.user_data[client_id]['voiceprint'] = voiceprint_feature
-                    logger.info(f"声纹特征已提取并保存，客户端: {client_id}")
-                
+                embedding = await voice_processor.extract_voiceprint_from_file(filepath)
+                if embedding is not None:
+                    manager.set_voiceprint_embedding(client_id, embedding)
+                    logger.info(f"声纹嵌入已提取并保存，客户端: {client_id}, 维度: {embedding.shape}")
+                else:
+                    logger.warning(f"声纹嵌入提取失败，客户端: {client_id}")
             except Exception as e:
                 logger.warning(f"声纹特征提取失败: {e}")
-        
+
         return {
             "success": True,
-            "message": "声纹上传成功",
+            "message": "声纹上传成功" if embedding is not None else "声纹上传成功但嵌入提取失败",
             "filename": filename,
-            "size": len(contents)
+            "size": len(contents),
+            "embeddingExtracted": embedding is not None
         }
         
     except Exception as e:
@@ -176,11 +176,10 @@ async def delete_voiceprint(request: Request):
         # 检查是否删除了当前使用的声纹文件
         is_current_file = False
         if filename:
-            # 这里需要检查该文件是否是当前使用的声纹文件
-            # 简化处理：假设如果删除的是最新文件，则认为是当前文件
             voiceprint_files = [f for f in os.listdir(VOICEPRINT_DIR) if f.endswith(('.webm', '.wav', '.mp3', '.ogg'))]
             if not voiceprint_files or filename not in voiceprint_files:
                 is_current_file = True
+                manager.clear_voiceprint()
         
         if deleted_files:
             return {
@@ -280,11 +279,16 @@ async def play_voiceprint(filename: str):
                 "message": "文件不存在"
             }
         
-        # 返回音频文件
+        # 返回音频文件，禁用缓存防止播放旧录音
         return FileResponse(
             filepath,
             media_type="audio/webm",
-            filename=filename
+            filename=filename,
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0"
+            }
         )
         
     except Exception as e:

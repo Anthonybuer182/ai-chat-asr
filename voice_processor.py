@@ -850,16 +850,103 @@ class VoiceProcessor:
         return text
 
     async def extract_voiceprint_feature(self, audio_data: bytes) -> Any:
-        """提取声纹特征"""
+        """从 PCM int16 音频中提取声纹嵌入向量"""
         try:
             if not self.voiceprint_model:
-                logger.warning("声纹模型未初始化，无法提取特征")
                 return None
-            
-            logger.info("声纹特征提取功能待实现")
-            return {"feature": "placeholder", "timestamp": time.time()}
-            
+
+            import tempfile
+            import wave
+
+            audio_array = np.frombuffer(audio_data, dtype=np.int16)
+            if len(audio_array) < 16000:
+                return None
+
+            audio_float = audio_array.astype(np.float32) / 32768.0
+
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp:
+                tmp_path = tmp.name
+                with wave.open(tmp_path, 'wb') as wf:
+                    wf.setnchannels(1)
+                    wf.setsampwidth(2)
+                    wf.setframerate(16000)
+                    wf.writeframes(audio_data)
+
+            try:
+                result = self.voiceprint_model(tmp_path)
+                if result and 'spk_embedding' in result:
+                    embedding = np.array(result['spk_embedding'], dtype=np.float32)
+                    logger.info(f"声纹嵌入提取成功，维度: {embedding.shape}")
+                    return embedding
+                else:
+                    logger.warning(f"声纹提取返回格式异常: {list(result.keys()) if result else None}")
+                    return None
+            finally:
+                try:
+                    os.unlink(tmp_path)
+                except:
+                    pass
+
         except Exception as e:
-            logger.error(f"声纹特征提取失败: {e}")
+            logger.warning(f"声纹特征提取失败: {e}")
             return None
+
+    async def extract_voiceprint_from_file(self, filepath: str) -> Any:
+        """从音频文件提取声纹嵌入"""
+        try:
+            if not self.voiceprint_model:
+                return None
+
+            import subprocess
+            import tempfile
+
+            wav_path = filepath
+            if filepath.endswith('.webm'):
+                tmp_wav = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
+                tmp_wav.close()
+                try:
+                    subprocess.run([
+                        'ffmpeg', '-y', '-i', filepath,
+                        '-ar', '16000', '-ac', '1', '-sample_fmt', 's16',
+                        tmp_wav.name
+                    ], capture_output=True, timeout=30, check=True)
+                    wav_path = tmp_wav.name
+                except Exception as e:
+                    logger.error(f"webm→wav 转换失败: {e}")
+                    try:
+                        os.unlink(tmp_wav.name)
+                    except:
+                        pass
+                    return None
+
+            try:
+                result = self.voiceprint_model(wav_path)
+                if result and 'spk_embedding' in result:
+                    embedding = np.array(result['spk_embedding'], dtype=np.float32)
+                    logger.info(f"声纹嵌入提取成功，维度: {embedding.shape}")
+                    return embedding
+                else:
+                    return None
+            finally:
+                if wav_path != filepath:
+                    try:
+                        os.unlink(wav_path)
+                    except:
+                        pass
+
+        except Exception as e:
+            logger.warning(f"从文件提取声纹失败: {e}")
+            return None
+
+    def match_voiceprint(self, embedding_a, embedding_b, threshold: float = None) -> bool:
+        """余弦相似度比对两个声纹嵌入"""
+        if embedding_a is None or embedding_b is None:
+            return False
+        if threshold is None:
+            threshold = getattr(settings, 'WAKEUP_THRESHOLD', 0.8)
+        a = np.asarray(embedding_a, dtype=np.float32).flatten()
+        b = np.asarray(embedding_b, dtype=np.float32).flatten()
+        sim = float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-9))
+        logger.debug(f"声纹余弦相似度: {sim:.4f}, 阈值: {threshold}")
+        return sim >= threshold
 

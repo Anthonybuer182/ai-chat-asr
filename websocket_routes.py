@@ -191,6 +191,22 @@ async def handle_control_command(text_message: Dict[str, Any], client_id: str, w
             'timestamp': time.time()
         })
 
+    elif command == 'voiceprint_record':
+        manager.user_data[client_id]['voiceprint_recording'] = True
+        await websocket.send_json({
+            'type': 'voiceprint_recording_started',
+            'message': '请开始说话，系统将录制声纹',
+            'timestamp': time.time()
+        })
+
+    elif command == 'voiceprint_clear':
+        manager.clear_voiceprint(client_id)
+        await websocket.send_json({
+            'type': 'voiceprint_cleared',
+            'message': '声纹已清除',
+            'timestamp': time.time()
+        })
+
 def create_wav_header(audio_bytes: bytes, sample_rate: int = 24000, num_channels: int = 1, bits_per_sample: int = 16):
     """创建WAV文件头"""
     import struct
@@ -388,6 +404,32 @@ async def handle_audio_data(audio_data: bytes, client_id: str, websocket: WebSoc
         user_data = manager.user_data[client_id]
         current_time = time.time()
 
+        if user_data.get('voiceprint_recording'):
+            if 'voiceprint_audio' not in user_data:
+                user_data['voiceprint_audio'] = []
+            user_data['voiceprint_audio'].append(audio_data)
+            total_bytes = sum(len(c) for c in user_data['voiceprint_audio'])
+            if total_bytes >= 16000 * 2 * 3:
+                all_audio = b''.join(user_data['voiceprint_audio'])
+                user_data['voiceprint_audio'] = []
+                user_data['voiceprint_recording'] = False
+                if voice_processor and voice_processor.voiceprint_model:
+                    embedding = await voice_processor.extract_voiceprint_feature(all_audio)
+                    if embedding is not None:
+                        manager.set_voiceprint_embedding(client_id, embedding)
+                        await websocket.send_json({
+                            'type': 'voiceprint_recorded',
+                            'message': '声纹录制成功',
+                            'timestamp': time.time()
+                        })
+                        return
+                await websocket.send_json({
+                    'type': 'voiceprint_record_failed',
+                    'message': '声纹录制失败，请重试',
+                    'timestamp': time.time()
+                })
+            return
+
         if voice_processor:
             vad_result = voice_processor.detect_speech(audio_data, client_id)
         else:
@@ -556,6 +598,20 @@ async def process_speech(audio_data: bytes, client_id: str, websocket: WebSocket
                 'text': recognized_text,
                 'timestamp': time.time()
             })
+
+        if manager.has_voiceprint(client_id) and voice_processor and voice_processor.voiceprint_model:
+            audio_duration = len(audio_data) / 2 / 16000.0
+            if audio_duration >= 0.8:
+                stored_embedding = manager.get_voiceprint_embedding()
+                current_embedding = await voice_processor.extract_voiceprint_feature(audio_data)
+                if current_embedding is not None and not voice_processor.match_voiceprint(current_embedding, stored_embedding):
+                    logger.warning(f"客户端 {client_id} 声纹不匹配，拒绝处理")
+                    await websocket.send_json({
+                        'type': 'voiceprint_rejected',
+                        'message': '声纹不匹配，仅授权用户可使用',
+                        'timestamp': time.time()
+                    })
+                    return
 
         if not (voice_processor and voice_processor.llm_client):
             await websocket.send_json({

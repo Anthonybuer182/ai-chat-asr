@@ -1472,6 +1472,15 @@
                 triggerPipelineEmotion('wakeup');
             } else if (data.type === 'wakeup_sleep') {
                 triggerPipelineEmotion('idle');
+            } else if (data.type === 'voiceprint_rejected') {
+                addMessage('声纹不匹配，仅授权用户可使用', 'system', data.timestamp);
+                triggerPipelineEmotion('error');
+            } else if (data.type === 'voiceprint_recorded') {
+                addMessage('声纹录制成功', 'system', data.timestamp);
+            } else if (data.type === 'voiceprint_cleared') {
+                addMessage('声纹已清除', 'system', data.timestamp);
+            } else if (data.type === 'voiceprint_record_failed') {
+                addMessage('声纹录制失败，请重试', 'system', data.timestamp);
             } else if (data.type === 'error' || data.type === 'llm_error') {
                 // 错误消息
                 if (isStreaming && currentStreamingMessage) {
@@ -3153,7 +3162,8 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    loadVoiceprintFiles(); // 重新加载当前文件显示
+                    resetVoiceprintRecording();
+                    loadVoiceprintFiles();
                 } else {
                     alert('删除失败: ' + data.message);
                 }
@@ -3242,8 +3252,7 @@
         function playVoiceprintFile(filename) {
             console.log('播放声纹文件:', filename);
             
-            // 获取音频文件的URL - 使用正确的API端点
-            const audioUrl = `/api/voiceprint/play?filename=${encodeURIComponent(filename)}`;
+            const audioUrl = `/api/voiceprint/play?filename=${encodeURIComponent(filename)}&t=${Date.now()}`;
             
             // 创建Audio对象
             const audio = new Audio(audioUrl);
@@ -3368,6 +3377,7 @@
                 });
                 
                 voiceprintAudioChunks = [];
+                voiceprintAudioBlob = null;
                 
                 voiceprintRecorder.ondataavailable = (event) => {
                     if (event.data.size > 0) {
