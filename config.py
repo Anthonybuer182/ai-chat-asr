@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     SAMPLE_RATE: int = 16000
     CHANNELS: int = 1
     AUDIO_FORMAT: str = "wav"
+    # 实时识别：最后一帧语音后连续静音达到该秒数则整段送 ASR（略小响应更快，略大更不易切成两半）
+    speech_end_silence_sec: float = 0.55
     
     # 唤醒词配置
     WAKEUP_KEYWORD: str = "你好小助手"
@@ -47,6 +49,8 @@ class Settings(BaseSettings):
     
     # 模型配置
     asr_model: str = "iic/SenseVoiceSmall"
+    # 仅对 SenseVoice 等多语模型有效：zh 锁定中文（推荐本仓库中文界面）；多语场景可设 auto / en / ja / ko / yue
+    asr_language: str = "zh"
     voiceprint_model: str = "damo/speech_campplus_sv_zh-cn_16k-common"
     
     class Config:

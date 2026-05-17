@@ -130,7 +130,8 @@ class VoiceProcessor:
         try:
             from funasr import AutoModel
             self.asr_model = AutoModel(model=settings.asr_model)
-            logger.info("ASR模型初始化成功")
+            _al = (getattr(settings, "asr_language", None) or "zh").strip().lower()
+            logger.info("ASR模型初始化成功（语种参数: %s）", _al or "auto")
             return True
         except Exception as e:
             logger.error(f"ASR模型初始化失败: {e}")

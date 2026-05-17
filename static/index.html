@@ -2807,7 +2807,7 @@
 
                 console.log(`语音测试发送完成，共 ${chunksSent} 块`);
 
-                // 发送静音块触发后端 speech buffer flush（等待 SILENCE_THRESHOLD = 0.8s）
+                // 发送静音块触发后端段结束（需超过服务端 speech_end_silence_sec，默认约 0.55s）
                 if (websocket && websocket.readyState === WebSocket.OPEN) {
                     const silenceChunk = new Int16Array(1600); // 全零 = 静音
                     const silencesToSend = 10; // 10 × 100ms = 1s 静音
@@ -2855,7 +2855,7 @@
                 
                 // 尝试使用AudioWorklet（现代方案）
                 try {
-                    await audioContext.audioWorklet.addModule('/static/audio-processor.js');
+                    await audioContext.audioWorklet.addModule('/static/audio-processor.js?v=20250517d');
                     const workletNode = new AudioWorkletNode(audioContext, 'audio-processor');
                     
                     workletNode.port.onmessage = (event) => {
@@ -2863,6 +2863,7 @@
                             const chunk = new Int16Array(event.data.data);
                             if (websocket && websocket.readyState === WebSocket.OPEN) {
                                 websocket.send(chunk.buffer);
+                                if (LIVE2D_DEBUG) console.log('发送音频数据', chunk.length);
                             } else {
                                 console.warn('WebSocket未连接，无法发送音频数据');
                             }

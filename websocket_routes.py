@@ -3,7 +3,9 @@ import logging
 import re
 import time
 import asyncio
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
+
+import numpy as np
 from fastapi import WebSocket, WebSocketDisconnect
 import base64
 import ChatTTS
@@ -22,10 +24,17 @@ from live2d_prompt import (
 )
 from minimax_emotion_interjection import apply_minimax_emotion_interjection
 
-SILENCE_THRESHOLD = 0.8   # 静音多少秒后触发 ASR
 MIN_SPEECH_BYTES = 3200   # 最少 200ms 的 16kHz int16 音频才送 ASR
 
 logger = logging.getLogger(__name__)
+
+
+def _pcm_int16_bytes_to_f32(audio_data: bytes) -> Optional[np.ndarray]:
+    """将客户端 PCM int16 小端字节转为 float32 波形 [-1,1]，供 FunASR 走 ndarray 分支。"""
+    if not audio_data or len(audio_data) < 2 or (len(audio_data) % 2) != 0:
+        return None
+    pcm = np.frombuffer(audio_data, dtype=np.int16)
+    return pcm.astype(np.float32) / 32768.0
 
 # 全局变量（将在main.py中注入）
 voice_processor: VoiceProcessor = None
@@ -389,7 +398,7 @@ async def handle_audio_data(audio_data: bytes, client_id: str, websocket: WebSoc
                 logger.debug(f"客户端 {client_id} 检测到语音开始")
         elif user_data['is_speech_active']:
             silence_duration = current_time - user_data['last_speech_time']
-            if silence_duration >= SILENCE_THRESHOLD:
+            if silence_duration >= getattr(settings, "speech_end_silence_sec", 0.55):
                 user_data['is_speech_active'] = False
                 buffered_audio = b''.join(user_data['speech_buffer'])
                 user_data['speech_buffer'] = []
@@ -445,7 +454,28 @@ async def process_speech(audio_data: bytes, client_id: str, websocket: WebSocket
         return
 
     try:
-        result = voice_processor.asr_model.generate(input=audio_data)
+        waveform = _pcm_int16_bytes_to_f32(audio_data)
+        if waveform is None:
+            logger.warning("ASR: PCM 字节无效（长度或对齐） client=%s", client_id)
+            return
+        _in: Union[np.ndarray, bytes] = waveform
+        _gen = {"input": _in}
+        _lang = (getattr(settings, "asr_language", None) or "auto").strip().lower()
+        if _lang and _lang != "auto":
+            _gen["language"] = _lang
+        logger.debug(
+            "ASR generate kwargs: language=%s, samples=%d",
+            _gen.get("language", "auto"),
+            len(waveform),
+        )
+        try:
+            result = voice_processor.asr_model.generate(**_gen)
+        except TypeError:
+            # 非 SenseVoice 等不接收 language 参数时回退
+            if len(_gen) > 1:
+                result = voice_processor.asr_model.generate(input=_in)
+            else:
+                raise
         if not (result and len(result) > 0 and 'text' in result[0]):
             return
 

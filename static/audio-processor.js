@@ -1,3 +1,12 @@
+/**
+ * AudioWorklet 运行在 AudioWorkletGlobalScope，与 window 不同：
+ * 规范/实现里长期不保证存在全局 performance，直接写 performance.now 会 ReferenceError。
+ * 这里只用 Date.now（~1ms 精度）；Worklet 内请勿使用裸的 performance。
+ */
+function workletNowMs() {
+    return Date.now();
+}
+
 class AudioProcessor extends AudioWorkletProcessor {
     constructor() {
         super();
@@ -6,7 +15,9 @@ class AudioProcessor extends AudioWorkletProcessor {
         this.audioBuffer = [];
         this.bufferDuration = 0.1;
         this.samplesPerBuffer = Math.ceil(this.targetSampleRate * this.bufferDuration);
-        this.minAudioLength = 512;
+        /** @type {Int16Array|null} */
+        this._acc = null;
+        this._accLen = 0;
         
         // VAD状态管理
         this.vadStates = {
@@ -19,9 +30,7 @@ class AudioProcessor extends AudioWorkletProcessor {
             silenceCounter: 0
         };
 
-        // 性能优化
         this.processingEnabled = true;
-        this.lastProcessTime = 0;
         
         this.port.onmessage = (event) => {
             if (event.data.type === 'init') {
@@ -41,7 +50,6 @@ class AudioProcessor extends AudioWorkletProcessor {
 
     recalculateBufferParams() {
         this.samplesPerBuffer = Math.ceil(this.targetSampleRate * this.bufferDuration);
-        this.minAudioLength = Math.min(512, this.samplesPerBuffer);
     }
 
     resetState() {
@@ -56,12 +64,6 @@ class AudioProcessor extends AudioWorkletProcessor {
         if (!this.processingEnabled) {
             return true;
         }
-
-        const currentTime = performance.now();
-        if (currentTime - this.lastProcessTime < 10) {
-            return true;
-        }
-        this.lastProcessTime = currentTime;
 
         const input = inputs[0];
         if (input && input.length > 0) {
@@ -82,7 +84,7 @@ class AudioProcessor extends AudioWorkletProcessor {
 
     processAudioChunk(inputData) {
         const float32Data = this.validateAudioData(inputData);
-        if (!float32Data || float32Data.length < this.minAudioLength) {
+        if (!float32Data || float32Data.length === 0) {
             return null;
         }
 
@@ -92,42 +94,37 @@ class AudioProcessor extends AudioWorkletProcessor {
             return null;
         }
 
-        const normalizedBuffer = this.normalizeAudio(downsampledBuffer);
-        
-        const pcmBuffer = this.floatTo16BitPCM(normalizedBuffer);
+        // 勿对每一渲染块做峰值归一化，会扭曲短时包络，极易把「你好」等读成单字错识
+        const pcmBuffer = this.floatTo16BitPCM(downsampledBuffer);
         
         return pcmBuffer;
     }
 
     validateAudioData(inputData) {
-        if (!inputData || !Array.isArray(inputData)) {
+        if (!inputData) {
             return null;
         }
 
         let float32Data;
         if (inputData instanceof Float32Array) {
             float32Data = inputData;
-        } else {
+        } else if (Array.isArray(inputData)) {
             float32Data = new Float32Array(inputData);
+        } else {
+            return null;
         }
 
-        const maxAmplitude = Math.max(...float32Data.map(Math.abs));
+        let maxAmplitude = 0;
+        for (let i = 0; i < float32Data.length; i++) {
+            const a = float32Data[i];
+            const abs = a < 0 ? -a : a;
+            if (abs > maxAmplitude) maxAmplitude = abs;
+        }
         if (maxAmplitude < 0.001) {
             return null;
         }
 
         return float32Data;
-    }
-
-    normalizeAudio(buffer) {
-        const maxVal = Math.max(...buffer.map(Math.abs));
-        if (maxVal > 0) {
-            const factor = 1 / maxVal;
-            for (let i = 0; i < buffer.length; i++) {
-                buffer[i] *= factor;
-            }
-        }
-        return buffer;
     }
 
     downsampleBuffer(buffer, inputSampleRate, outputSampleRate) {
@@ -194,27 +191,45 @@ class AudioProcessor extends AudioWorkletProcessor {
     }
 
     accumulateAndSendAudio(audioData) {
-        this.audioBuffer.push(...audioData);
-        
-        while (this.audioBuffer.length >= this.samplesPerBuffer) {
-            const chunk = new Int16Array(this.samplesPerBuffer);
-            for (let i = 0; i < this.samplesPerBuffer; i++) {
-                chunk[i] = this.audioBuffer[i];
-            }
-            
-            this.audioBuffer.splice(0, this.samplesPerBuffer);
-            
+        const m = this.samplesPerBuffer;
+        const addLen = audioData.length;
+        let acc = this._acc;
+        let accLen = this._accLen;
+        const need = accLen + addLen;
+        if (!acc || acc.length < need) {
+            const grow = Math.max(need, Math.max(m * 4, acc ? acc.length * 2 : 0));
+            const next = new Int16Array(grow);
+            if (accLen > 0) next.set(acc.subarray(0, accLen), 0);
+            acc = next;
+        }
+        acc.set(audioData, accLen);
+        accLen += addLen;
+        this._acc = acc;
+        this._accLen = accLen;
+
+        let consumed = 0;
+        while (accLen - consumed >= m) {
+            const chunk = new Int16Array(m);
+            chunk.set(acc.subarray(consumed, consumed + m));
+            consumed += m;
             this.port.postMessage({
                 type: 'audioChunk',
                 data: chunk.buffer,
-                timestamp: performance.now()
+                timestamp: workletNowMs()
             }, [chunk.buffer]);
+        }
+        if (consumed > 0) {
+            const remain = accLen - consumed;
+            if (remain > 0) {
+                acc.copyWithin(0, consumed, accLen);
+            }
+            this._accLen = remain;
         }
     }
 
     getStatistics() {
         return {
-            bufferSize: this.audioBuffer.length,
+            bufferSize: this._accLen,
             speechThreshold: this.vadStates.speechThreshold,
             isSpeechActive: this.vadStates.isSpeechActive,
             sampleRate: this.targetSampleRate
