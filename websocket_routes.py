@@ -206,21 +206,6 @@ async def handle_control_command(text_message: Dict[str, Any], client_id: str, w
             'timestamp': time.time()
         })
 
-def create_wav_header(audio_bytes: bytes, sample_rate: int = 24000, num_channels: int = 1, bits_per_sample: int = 16):
-    """创建WAV文件头"""
-    import struct
-    
-    import wave
-    import io
-    
-    buffer = io.BytesIO()
-    with wave.open(buffer, 'wb') as wav_file:
-        wav_file.setnchannels(num_channels)
-        wav_file.setsampwidth(bits_per_sample // 8)
-        wav_file.setframerate(sample_rate)
-        wav_file.writeframes(audio_bytes)
-    
-    return buffer.getvalue()
 
 async def handle_tts_request(
     sentence_raw: str,

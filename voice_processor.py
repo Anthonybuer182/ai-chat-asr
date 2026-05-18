@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import time
-import json
 import os
 import numpy as np
 import torch
@@ -629,7 +628,6 @@ class VoiceProcessor:
                 except Exception as e:
                     logger.warning(f"声纹模型下载失败 (第{attempt + 1}次): {e}")
                     if attempt < max_retries - 1:
-                        import time
                         time.sleep(2)
                         
             logger.error("声纹模型下载失败，已达到最大重试次数")
@@ -654,53 +652,6 @@ class VoiceProcessor:
             logger.error(f"LLM客户端初始化失败: {e}")
             logger.info("LLM功能将不可用")
             return False
-
-    async def get_llm_response(self, user_message: str, conversation_history: list = None, live2d_model_key: Optional[str] = None) -> str:
-        """调用LLM获取回复"""
-        try:
-            if not self.llm_client:
-                logger.warning("LLM客户端未初始化，无法获取回复")
-                return "抱歉，我现在无法回答您的问题。"
-            
-            messages = []
-            
-            messages.append({"role": "system", "content": _merged_live2d_system_prompt(live2d_model_key)})
-            
-            if conversation_history:
-                for entry in conversation_history[-10:]:
-                    if entry['type'] == 'user':
-                        messages.append({"role": "user", "content": entry['text']})
-                    elif entry['type'] == 'assistant':
-                        messages.append({"role": "assistant", "content": entry['text']})
-            
-            # process_speech 已把本轮 user 写入 history 时再 append 会导致用户句重复
-            _dup = bool(
-                conversation_history
-                and conversation_history[-1].get('type') == 'user'
-                and conversation_history[-1].get('text') == user_message
-            )
-            if not _dup:
-                messages.append({"role": "user", "content": user_message})
-            
-            response = self.llm_client.chat.completions.create(
-                model=settings.MODEL_NAME,
-                messages=messages,
-                max_tokens=500,
-                temperature=0.7,
-                stream=False
-            )
-            
-            if response and response.choices:
-                llm_response = response.choices[0].message.content.strip()
-                logger.info(f"LLM回复: {llm_response[:100]}...")
-                return llm_response
-            else:
-                logger.warning("LLM返回结果为空")
-                return "抱歉，我没有理解您的问题。"
-                
-        except Exception as e:
-            logger.error(f"LLM调用失败: {e}")
-            return "抱歉，我现在无法回答您的问题。"
 
     async def stream_llm_response(self, user_message: str, conversation_history: list = None, live2d_model_key: Optional[str] = None):
         """流式调用LLM获取回复"""

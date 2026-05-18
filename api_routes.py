@@ -6,7 +6,6 @@ import shutil
 from typing import List, Dict, Any
 from fastapi import APIRouter, UploadFile, File, Form, Request, HTTPException, Body
 from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 import logging
 from pathlib import Path
 

@@ -1,9 +1,0 @@
-OK | kw=你好小助手 | text=你好小助手今天天气怎么样 | match=True | strip=今天天气怎么样 | expect=今天天气怎么样
-OK | kw=你好小助手 | text=你好小助手，今天天气怎么样？ | match=True | strip=今天天气怎么样？ | expect=今天天气怎么样？
-OK | kw=你好小助手 | text=你好 小 助手 今天天气怎么样 | match=True | strip=今天天气怎么样 | expect=今天天气怎么样
-OK | kw=小爱同学 | text=小爱同学，放首歌 | match=True | strip=放首歌 | expect=放首歌
-OK | kw=hey robot | text=hey robot, what time is it? | match=True | strip=what time is it? | expect=what time is it?
-OK | kw=你好小助手 | text=你好小助手 | match=True | strip= | expect=
-OK | kw=你好小助手 | text=帮我查一下天气 | match=False | strip=帮我查一下天气 | expect=None
-
-done
