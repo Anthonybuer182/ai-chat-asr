@@ -1360,13 +1360,6 @@
             isConnected = true;
             updateConnectionStatus(true);
             if (LIVE2D_DEBUG) console.log('WebSocket连接成功');
-            
-            // 自动开始录音
-            setTimeout(() => {
-                if (!isRecording) {
-                    startRecording();
-                }
-            }, 500);
         };
 
             websocket.onmessage = function(event) {
@@ -1466,6 +1459,9 @@
                 triggerPipelineEmotion('listening');
             } else if (data.type === 'wakeup_detected') {
                 triggerPipelineEmotion('wakeup');
+            } else if (data.type === 'wakeup_required') {
+                addMessage(data.message || '请先说出唤醒词', 'system', data.timestamp);
+                triggerPipelineEmotion('idle');
             } else if (data.type === 'wakeup_sleep') {
                 triggerPipelineEmotion('idle');
             } else if (data.type === 'voiceprint_rejected') {
@@ -2764,21 +2760,44 @@
         // 发送语音测试
         async function sendVoiceTest() {
             if (!isConnected) {
-                alert('请先连接WebSocket服务器');
+                addMessage('请先连接WebSocket服务器', 'system');
                 return;
             }
             if (isSendingAudio) {
-                console.log('正在发送音频中，请勿重复点击');
+                addMessage('正在发送音频中，请稍后再试', 'system');
                 return;
             }
 
             try {
                 isSendingAudio = true;
+                const voiceBtn = document.getElementById('voiceTestBtn');
+                if (voiceBtn) {
+                    voiceBtn.disabled = true;
+                    voiceBtn.querySelector('i').className = 'fas fa-spinner fa-spin';
+                }
                 console.log('开始发送语音测试文件');
 
                 const response = await fetch(`/api/voiceprint/play?filename=current_voiceprint.webm`);
+                const contentType = response.headers.get('content-type') || '';
+
                 if (!response.ok) {
-                    throw new Error(`无法读取语音文件: ${response.status} ${response.statusText}`);
+                    throw new Error(`服务器错误: ${response.status} ${response.statusText}`);
+                }
+
+                if (contentType.includes('application/json')) {
+                    const json = await response.json();
+                    throw new Error(json.message || '无法读取语音文件');
+                }
+
+                if (!contentType.includes('audio/')) {
+                    const text = await response.text();
+                    try {
+                        const json = JSON.parse(text);
+                        throw new Error(json.message || '返回格式异常');
+                    } catch (e) {
+                        if (e.message !== '返回格式异常') throw e;
+                        throw new Error('服务器返回非音频数据，请确认已录制声纹');
+                    }
                 }
 
                 const arrayBuffer = await response.arrayBuffer();
@@ -2787,26 +2806,30 @@
                 }
                 console.log('语音文件读取成功，大小:', arrayBuffer.byteLength, '字节');
 
-                const testAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const audioBuffer = await testAudioCtx.decodeAudioData(arrayBuffer);
-                console.log('音频解码成功，采样率:', audioBuffer.sampleRate, '时长:', audioBuffer.duration.toFixed(2), '秒');
+                let audioBuffer;
+                try {
+                    const testAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    audioBuffer = await testAudioCtx.decodeAudioData(arrayBuffer);
+                    console.log('音频解码成功，采样率:', audioBuffer.sampleRate, '时长:', audioBuffer.duration.toFixed(2), '秒');
+                } catch (decodeError) {
+                    console.error('音频解码失败:', decodeError);
+                    throw new Error('音频解码失败，声纹文件可能已损坏，请重新录制');
+                }
 
-                // 归一化 + 降采样到 16kHz + 转 PCM（与 AudioWorklet 路径一致）
                 const channelData = audioBuffer.getChannelData(0);
                 const normalized = normalizeFloat32(channelData);
                 const downsampled = downsampleBuffer(normalized, audioBuffer.sampleRate, 16000);
                 const int16Buffer = floatTo16BitPCM(downsampled);
-                await testAudioCtx.close();
+                audioBuffer = null;
 
                 console.log('处理后音频长度:', int16Buffer.length, '采样点');
 
-                // 按块发送，模拟实时流
-                const chunkSize = 1600; // 100ms @ 16kHz
+                const chunkSize = 1600;
                 let chunksSent = 0;
                 for (let offset = 0; offset < int16Buffer.length; offset += chunkSize) {
                     if (!websocket || websocket.readyState !== WebSocket.OPEN) {
-                        console.warn('WebSocket连接已断开，停止发送');
-                        break;
+                        addMessage('WebSocket连接已断开，语音测试中断', 'system');
+                        return;
                     }
                     const chunk = int16Buffer.slice(offset, offset + chunkSize);
                     websocket.send(chunk.buffer);
@@ -2816,10 +2839,9 @@
 
                 console.log(`语音测试发送完成，共 ${chunksSent} 块`);
 
-                // 发送静音块触发后端段结束（需超过服务端 speech_end_silence_sec，默认约 0.55s）
                 if (websocket && websocket.readyState === WebSocket.OPEN) {
-                    const silenceChunk = new Int16Array(1600); // 全零 = 静音
-                    const silencesToSend = 10; // 10 × 100ms = 1s 静音
+                    const silenceChunk = new Int16Array(1600);
+                    const silencesToSend = 10;
                     for (let i = 0; i < silencesToSend; i++) {
                         websocket.send(silenceChunk.buffer);
                         await new Promise(resolve => setTimeout(resolve, 100));
@@ -2827,8 +2849,14 @@
                 }
             } catch (error) {
                 console.error('发送语音测试失败:', error);
+                addMessage('语音测试失败: ' + error.message, 'system');
             } finally {
                 isSendingAudio = false;
+                const voiceBtn = document.getElementById('voiceTestBtn');
+                if (voiceBtn) {
+                    voiceBtn.disabled = false;
+                    voiceBtn.querySelector('i').className = 'fas fa-play';
+                }
             }
         }
 

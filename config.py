@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     speech_end_silence_sec: float = 0.55
     
     # 唤醒词配置
-    WAKEUP_KEYWORD: str = "你好小助手"
+    WAKEUP_KEYWORD: str = ""
     WAKEUP_THRESHOLD: float = 0.8
     WAKEUP_TIMEOUT: int = 60
 

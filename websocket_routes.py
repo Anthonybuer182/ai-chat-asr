@@ -528,7 +528,12 @@ async def process_speech(audio_data: bytes, client_id: str, websocket: WebSocket
                     })
                     return
             else:
-                logger.debug(f"客户端 {client_id} 休眠中，未检测到唤醒词，忽略: {recognized_text}")
+                logger.info(f"客户端 {client_id} 休眠中，未检测到唤醒词「{_wakeup_kw}」，忽略: {recognized_text}")
+                await websocket.send_json({
+                    'type': 'wakeup_required',
+                    'message': f'请先说唤醒词「{_wakeup_kw}」来激活对话',
+                    'timestamp': time.time()
+                })
                 return
         elif _wakeup_state == 'awake':
             manager.update_wakeup_activity(client_id)

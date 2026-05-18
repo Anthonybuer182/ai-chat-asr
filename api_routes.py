@@ -275,22 +275,14 @@ async def get_voiceprint_files():
 async def play_voiceprint(filename: str):
     """播放声纹文件"""
     try:
-        # 验证文件名安全性
         if '..' in filename or '/' in filename or '\\' in filename:
-            return {
-                "success": False,
-                "message": "无效的文件名"
-            }
+            raise HTTPException(status_code=400, detail="无效的文件名")
         
         filepath = os.path.join(VOICEPRINT_DIR, filename)
         
         if not os.path.exists(filepath):
-            return {
-                "success": False,
-                "message": "文件不存在"
-            }
+            raise HTTPException(status_code=404, detail="声纹文件不存在，请先录制声纹")
         
-        # 返回音频文件，禁用缓存防止播放旧录音
         return FileResponse(
             filepath,
             media_type="audio/webm",
@@ -302,12 +294,11 @@ async def play_voiceprint(filename: str):
             }
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"播放声纹文件失败: {e}")
-        return {
-            "success": False,
-            "message": f"播放声纹文件失败: {str(e)}"
-        }
+        raise HTTPException(status_code=500, detail=f"播放声纹文件失败: {str(e)}")
 
 # Live2D模型相关API
 @api_router.post("/live2d/upload", summary="上传Live2D模型压缩包")
