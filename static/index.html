@@ -331,7 +331,9 @@
         /* 避免 canvas 行内基线空隙 */
         .live2d-panel canvas {
             display: block;
-            max-width: 100%;
+            width: 100% !important;
+            height: 100% !important;
+            image-rendering: auto;
         }
 
         .messages-container {
@@ -1219,11 +1221,10 @@
         if (live2d.Live2DModel && typeof live2d.Live2DModel.registerTicker === 'function') {
             live2d.Live2DModel.registerTicker(PIXI.Ticker);
         }
-        // 动作交叉淡化：略拉长可减少 emotion ↔ speak 切换时的突兀感
         if (live2d && live2d.config) {
-            const d = live2d.config.motionFadingDuration || 500;
-            live2d.config.motionFadingDuration = Math.min(680, Math.max(440, d));
-            live2d.config.motionSync = true;
+            live2d.config.motionFadingDuration = 400;
+            live2d.config.motionSync = false;
+            live2d.config.expressionFadingDuration = 0.35;
         }
 
         let app;
@@ -1232,14 +1233,14 @@
         (async function main() {
             // 创建PixiJS应用
                 app = new PIXI.Application({
-                view: document.getElementById("canvas"),  // 指定canvas元素
-                autoStart: true,                          // 自动开始渲染循环
-                resizeTo: document.querySelector('.live2d-panel'), // 画布大小随父容器变化
-                backgroundColor: 0xf1f5f9,
+                view: document.getElementById("canvas"),
+                autoStart: true,
+                resizeTo: document.querySelector('.live2d-panel'),
+                backgroundAlpha: 0,
                 antialias: false,
                 powerPreference: 'high-performance',
-                autoDensity: true,
-                resolution: Math.min(2, window.devicePixelRatio || 1),
+                autoDensity: false,
+                resolution: 2,
             });
         })();
         // 全局变量
@@ -2039,8 +2040,9 @@
 
         // motion：按标签轮询尝试，避免每次随机打乱带来的「跳戏」感
         const _motionRoundIndex = Object.create(null);
-        /** 从当前模型的 model3.json 解析出的 Motions 分组键（与 model_dict 里可能不一致） */
         let runtimeMotionGroupNames = [];
+
+        const _exprParamCache = {};
 
         async function fetchMotionGroupsFromModel3Url(modelUrl) {
             runtimeMotionGroupNames = [];
@@ -2060,6 +2062,31 @@
                     if (LIVE2D_DEBUG) console.log('[Live2D] model3.json 动作分组:', runtimeMotionGroupNames.join(', '));
                 } else {
                     console.warn('[Live2D] model3.json 中未找到 Motions 对象（FileReferences.Motions）');
+                }
+
+                const expressions = j.FileReferences && j.FileReferences.Expressions;
+                if (expressions && Array.isArray(expressions) && expressions.length) {
+                    const baseDir = modelUrl.replace(/\/[^/]+\.model3\.json$/i, '');
+                    const exprsToFetch = expressions.map((e) => {
+                        const name = e.Name;
+                        const file = e.File;
+                        const url = `${baseDir}/${file}`;
+                        return fetch(url, { cache: 'no-store' })
+                            .then((r) => r.ok ? r.json() : null)
+                            .then((def) => {
+                                if (def && def.Parameters && Array.isArray(def.Parameters)) {
+                                    const filtered = def.Parameters.filter(
+                                        (p) => p.Id !== 'PARAM_EYE_L_OPEN' && p.Id !== 'PARAM_EYE_R_OPEN'
+                                    );
+                                    if (filtered.length) {
+                                        _exprParamCache[name] = filtered;
+                                    }
+                                }
+                            })
+                            .catch(() => {});
+                    });
+                    await Promise.all(exprsToFetch);
+                    if (LIVE2D_DEBUG) console.log('[Live2D] 预加载表情参数:', Object.keys(_exprParamCache).join(', '));
                 }
             } catch (e) {
                 console.warn('[Live2D] 拉取/解析 model3.json 失败', e);
@@ -2249,6 +2276,53 @@
             if (clearPending) _ttsPendingOverlayEmotion = null;
         }
 
+        let _exprTween = null;
+
+        function _cancelExprTween() {
+            if (_exprTween) {
+                if (_exprTween.tickerFn && app && app.ticker) {
+                    app.ticker.remove(_exprTween.tickerFn);
+                }
+                _exprTween = null;
+            }
+        }
+
+        function _manualApplyExpression(exprName, durationSec) {
+            if (!live2dModel || !exprName) return;
+            const params = _exprParamCache[exprName];
+            if (!params || !params.length) return;
+            const cm = live2dModel.internalModel && live2dModel.internalModel.coreModel;
+            const m = cm && getCubismParamAccessor(cm);
+            if (!m || typeof m.setParameterValueById !== 'function') return;
+
+            const startParams = {};
+            for (const p of params) {
+                try { startParams[p.Id] = m.getParameterValueById(p.Id); } catch (e) { startParams[p.Id] = 0; }
+            }
+
+            _cancelExprTween();
+
+            const startTime = performance.now();
+            const durMs = Math.max(1, (durationSec || 0.35) * 1000);
+            const tickerFn = () => {
+                const cm2 = live2dModel && live2dModel.internalModel && live2dModel.internalModel.coreModel;
+                const m2 = cm2 && getCubismParamAccessor(cm2);
+                if (!m2) { _cancelExprTween(); return; }
+                const t = Math.min(1, (performance.now() - startTime) / durMs);
+                const eased = 1 - (1 - t) * (1 - t) * (1 - t);
+                for (const p of _exprTween.endParams) {
+                    const start = _exprTween.startParams[p.Id] ?? 0;
+                    const val = start + (p.Value - start) * eased;
+                    try { m2.setParameterValueById(p.Id, val); } catch (e) {}
+                }
+                if (t >= 1) _cancelExprTween();
+            };
+            _exprTween = { startParams, endParams: params, tickerFn };
+            if (app && app.ticker) {
+                app.ticker.add(tickerFn, null, -20);
+            }
+        }
+
         function applyTtsOverlayExpression(emotion) {
             if (!emotion || !live2dModel) return;
             const config = getAnimationForEmotion(emotion);
@@ -2258,14 +2332,8 @@
             const sig = `${emotion}|${expr}`;
             if (sig === _lastAppliedTtsOverlaySig) return;
             _lastAppliedTtsOverlaySig = sig;
-            try {
-                if (typeof live2dModel.expression === 'function') {
-                    live2dModel.expression(expr);
-                    if (LIVE2D_DEBUG) console.log(`[Expression/TTS overlay] ${emotion} → ${expr}`);
-                }
-            } catch (e) {
-                console.warn(`[Expression/TTS overlay] ${expr}`, e);
-            }
+            _manualApplyExpression(expr, 0.28);
+            if (LIVE2D_DEBUG) console.log(`[Expression/TTS overlay] ${emotion} → ${expr}`);
         }
 
         function flushPendingTtsTypingExpression(runPending) {
@@ -2288,18 +2356,14 @@
 
         // expression：同情绪下轮询取用，比纯随机更稳定、少「抽风换脸」
         const _expressionRoundIndex = Object.create(null);
-        function applyExpression(expressionList) {
+        function applyExpression(expressionList, fadeSec = 0.35) {
             if (!live2dModel || !expressionList?.length) return;
             const key = emotionScheduler.currentEmotion || '_';
             const i0 = _expressionRoundIndex[key] || 0;
             const expr = expressionList[i0 % expressionList.length];
             _expressionRoundIndex[key] = (i0 + 1) % expressionList.length;
-            try {
-                if (typeof live2dModel.expression === 'function') {
-                    live2dModel.expression(expr);
-                    if (LIVE2D_DEBUG) console.log(`[Expression] ${expr}`);
-                }
-            } catch (e) { console.warn(`[Expression] ${expr} 不可用`); }
+            _manualApplyExpression(expr, fadeSec);
+            if (LIVE2D_DEBUG) console.log(`[Expression] ${expr} fade=${fadeSec}`);
         }
 
         // ——— 兼容旧调用入口（其他地方直接调用这两个函数的不需要改）———
@@ -2335,6 +2399,29 @@
 
         function triggerLive2DExpression(expressionNames) {
             applyExpression(Array.isArray(expressionNames) ? expressionNames : [expressionNames]);
+        }
+
+        let _fadeInTickerFn = null;
+        function _fadeInLive2dModel() {
+            if (!live2dModel) return;
+            if (_fadeInTickerFn && app && app.ticker) {
+                app.ticker.remove(_fadeInTickerFn);
+            }
+            const start = performance.now();
+            const duration = 350;
+            _fadeInTickerFn = () => {
+                const t = Math.min(1, (performance.now() - start) / duration);
+                const eased = 1 - (1 - t) * (1 - t) * (1 - t);
+                live2dModel.alpha = Math.max(0, Math.min(1, eased));
+                if (t >= 1) {
+                    live2dModel.alpha = 1;
+                    if (app && app.ticker) app.ticker.remove(_fadeInTickerFn);
+                    _fadeInTickerFn = null;
+                }
+            };
+            if (app && app.ticker) {
+                app.ticker.add(_fadeInTickerFn, null, 100);
+            }
         }
 
         let audioAnalyser = null;
@@ -2396,6 +2483,9 @@
                     for (const idx of idxs) {
                         m.setParameterValueByIndex(idx, v);
                     }
+                    if (m.setParameterValueById) {
+                        try { m.setParameterValueById('PARAM_MOUTH_FORM', v * 0.8); } catch (_) {}
+                    }
                     return;
                 }
                 const mouthParamNames = [
@@ -2408,8 +2498,9 @@
                     for (const paramName of mouthParamNames) {
                         try {
                             m.setParameterValueById(paramName, v);
-                        } catch (_) { /* 尝试下一个 */ }
+                        } catch (_) { }
                     }
+                    try { m.setParameterValueById('PARAM_MOUTH_FORM', v * 0.8); } catch (_) {}
                 }
             } catch (e) {
                 console.warn('LipSync apply:', e);
@@ -3641,12 +3732,10 @@
         }
 
         function scheduleCenterInsideLive2dModel() {
-            if (live2dResizeRaf != null) cancelAnimationFrame(live2dResizeRaf);
+            if (live2dResizeRaf != null) return;
             live2dResizeRaf = requestAnimationFrame(() => {
-                live2dResizeRaf = requestAnimationFrame(() => {
-                    live2dResizeRaf = null;
-                    centerInsideLive2dModel();
-                });
+                live2dResizeRaf = null;
+                centerInsideLive2dModel();
             });
         }
 
@@ -3733,7 +3822,10 @@
                 if (live2dModel) {
                     app.stage.removeChild(live2dModel);
                     live2dModel.destroy();
+                    app.renderer.render(app.stage);
                 }
+                _cancelExprTween();
+                for (const k of Object.keys(_exprParamCache)) { delete _exprParamCache[k]; }
                 resetMouthParameterCache();
                 runtimeMotionGroupNames = [];
                 _live2dCenterFitCacheKey = '';
@@ -3746,7 +3838,7 @@
                 ]);
 
                 harvestMotionGroupsFromInternalModel();
-                // 将模型添加到舞台
+                live2dModel.alpha = 0;
                 app.stage.addChild(live2dModel);
                 try {
                     live2dModel.roundPixels = true;
@@ -3754,6 +3846,8 @@
 
                 ensureLive2dResizeHandlingOnce();
                 scheduleCenterInsideLive2dModel();
+
+                _fadeInLive2dModel();
 
                 // 为Cubism 4.0模型添加点击交互
                 live2dModel.on("hit", (hitAreas) => {
